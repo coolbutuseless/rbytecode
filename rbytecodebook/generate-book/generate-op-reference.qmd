@@ -1,0 +1,168 @@
+---
+title: "Generate Op Reference"
+format: html
+editor: source
+---
+
+
+```{r}
+library(dplyr)
+library(here)
+library(moggy)
+
+ops_orig <- rbytecode::ops
+
+ops <- ops_orig[order(names(ops_orig))]
+
+ops <- ops
+```
+
+
+
+```{r}
+this_df <- rbytecode:::ops_df %>%
+  mutate(
+    link = paste0("[-@sec-", name, "]")
+    # link = paste0("[-@sec-op", code, "]")    
+  ) %>%
+  # select(Name = name, Code = code, Desc = title, Section = link, Pop = pop, Push = push, Args = argc, 
+  #        Arg1 = arg1, Arg2 = arg2, Arg3 = arg3, Arg4 = arg4) %>%  
+  select(Name = name, Desc = title, Section = link) %>%
+  arrange(Name)
+  
+```
+
+
+
+
+```{r}
+doc <- MarkdownDoc$new()
+doc$h1("Appendix: Instruction Index", "op-index")
+
+# create_op_markdown <- function(op) {
+#   label <- sprintf("%i - `%s`", op$code, op$name)
+#   link  <- sec_cite(ref = op$name, label)
+#   link
+# }
+# 
+# links <- vapply(ops_orig, create_op_markdown, character(1))
+# doc$itemize(links)
+
+doc$table(this_df)
+
+
+outfile <- here::here("rbytecodebook", "a20-op-index-opcode.qmd")
+writeLines(doc$as_character(), outfile)
+```
+
+
+
+
+
+```{r}
+doc <- MarkdownDoc$new()
+doc$h1("Instruction Reference", "op")
+doc$code("library(rbytecode)", "setup", "include=FALSE")
+
+doc$add("
+This chapter has a complete listing of all bytecode instructions.
+
+It includes a summary of what the bytecode does, the arguments required and
+an indication of the instructions stack usage.
+
+Examples using this bytecode from bytecode assembly and R code are also 
+included where possible.
+")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Create documenation for each OP
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+create_op_markdown <- function(op) {
+  
+  # Page break
+  doc$add("{{< pagebreak >}}")
+  
+  # Section Title (with reference to cite)
+  # doc$h2(as_code(op$name), paste0("op", op$code))
+  doc$h2(as_code(op$name), op$name)
+  
+  # doc$add(sec_ref(paste0("op", op$code)))
+  
+  # Bold one-line title information
+  if (op$title != '') {
+    doc$add(as_bold(op$title))  
+  }
+  
+  if (op$description != '') {
+    doc$add(op$description)
+  }
+  
+  
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Instruction summary table
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  df <- data.frame(
+    ` ` = c("Name", "Value", "Number of Args", "Has expr index", "Stack Pop", "Stack Push"),
+    value = with(op, c(name, code, argc - has_expridx, has_expridx, pop, push))
+  )
+  names(df)[1] <- ' '
+  doc$table(df, caption = "Instruction summary")
+  
+  # message(op$name)
+  
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  # Argument summary table
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  if (op$argc - op$has_expridx > 0) {
+  df <- data.frame(
+    Argument    = as.character(seq_len(op$argc)),
+    Type        = op$args,
+    Description = op$arg_descs
+  )
+  
+  df <- df %>% 
+    filter(Type != 'expridx') %>%
+    mutate(Argument = seq_len(n()))
+  
+  
+  doc$table(df, caption = "Argument summary")
+  }
+  
+  
+  # Bytecode Assembly Example
+  if (op$example != "") {
+    doc$h3(paste(as_code(op$name), "Bytecode Assembly Example"))
+    doc$code(sprintf('code <- r"(\n%s\n)"\n\nasm(code) |> eval()', op$example), op$name, "error=TRUE")
+  }
+  
+  # R disassembly example
+  if (op$rexample != "") {
+    
+    # Check that R->bytecode produces this bytecode
+    bcdf <- dis(str2lang(op$rexample))
+    if (!op$name %in% bcdf$op) {
+      cat(op$rexample, "\n")
+      stop("bytecode does not contain: ", op$name)
+    }
+    
+    
+    doc$h3(paste("Example R code producing", as_code(op$name), "bytecode"))
+    doc$code(op$rexample, "eval=FALSE")
+    doc$code(sprintf(
+      "disq(\n  %s\n) |> as.character()",
+      op$rexample
+    ), "echo=FALSE")
+  }
+  
+}
+
+jnk <- lapply(ops, create_op_markdown)
+
+
+outfile <- here::here("rbytecodebook", "20-op-reference-auto.qmd")
+writeLines(doc$as_character(), outfile)
+```
+
+
+
+

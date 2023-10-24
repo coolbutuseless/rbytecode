@@ -1,0 +1,70 @@
+
+```{r include = FALSE}
+library(rbytecode)
+```
+
+
+# Appendix: Builtin, Special and `MATH1` functions
+
+
+
+## Builtin Functions {#sec-builtinfunctions}
+
+According to @tierney23 : 
+
+    Calls to functions known at compile time to be of type BUILTIN can be handled 
+    more efficiently. The interpreter evaluates all arguments for BUILTIN functions 
+    before calling the function, so the compiler can evaluate the arguments in 
+    line without the need for creating promises.
+
+Many *built-in* functions have their own bytecode instruction e.g. `ISCHARACTER`
+for `is.character()` and `MATH1 cos` for `cos()`.   
+
+Other built-in functions should be built via the instructions `GETBUILTIN` ([Section -@sec-GETBUILTIN])
+and `CALLBUILTIN` ([  Section -@sec-CALLBUILTIN])
+
+### List of all `base` package *built-in* functions
+
+```{r}
+basevars <- ls('package:base', all.names = TRUE)
+types <- sapply(basevars, function(n) typeof(get(n)))
+names(types)[types == 'builtin'] |> dput()
+```
+
+
+
+
+## Special Functions {#sec-specialfunctions}
+
+Special functions also have a custom instruction for executing a call: 
+`CALLSPECIAL` ([Section -@sec-CALLSPECIAL])
+
+### List of all `base` package *special* functions
+
+```{r}
+basevars <- ls('package:base', all.names = TRUE)
+types <- sapply(basevars, function(n) typeof(get(n)))
+names(types)[types == 'special'] |> dput()
+```
+
+
+## `MATH1` functions {#sec-math1functions}
+
+The `MATH` instruction understands the following operations
+
+```{r}
+compiler:::math1funs
+```
+
+E.g.
+
+```{r}
+code <- r"(
+LDCONST 1.54
+MATH1 ceiling
+RETURN
+)"
+
+asm(code) |> eval()
+```
+

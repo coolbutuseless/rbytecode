@@ -1,0 +1,90 @@
+
+```{r include=FALSE}
+library(rbytecode)
+```
+
+
+# Appendix: Glossary
+
+## Abstract Syntax Tree, AST
+
+A tree representation of the syntax of the code written in a language.
+
+
+## Assembler
+
+A compiler targetting the compilation of low-level assembly code to bytecode.
+
+## AST Interpreter
+
+The *AST Interpreter* is one mechanism by which R code is evaluated.  
+
+R code is first parsed into an AST.  The AST interpreter then *walks* through 
+the tree structure resoloving the value of expressions at each node of the tree.
+
+## `bcdf` byte code data.frame
+
+As an intermediate step in producing an executable R bytecode object from 
+R bytecode assembly, a data.frame is created which contains the information
+extracted when parsing the input code.
+
+It includes the following columns:
+
+* `depth` - the recursion depth of this code in terms of nestedd promises and
+  closures
+* `pc` the program counter indicating the index of each instruction.
+* `opcode` the integer used within the R bytecode object to represent the
+  instruction
+* `op` the string representation of the instruction
+* `args` a list column holding the arguments for the instruction.  This 
+  never includes the stored expression.
+* `expr` the stored expression with this instruction.  This may only be
+  included if `incl_expr` is included in the call to `dis()`
+  
+  
+### Example BCDF
+
+`bcdf` objects are produced by the disassembler (`dis()`) and also as 
+an intermediate stem when assembling using `asm()` (i.e. output from `parse_code()`)
+
+```{r}
+disq(1 + x, incl_expr = TRUE)
+```
+
+  
+  
+## Bytecode assembly
+
+The text representation of the bytecode instructions understood by the R
+bytecode VM e.g
+
+```
+LDCONST 1
+LDCONST 2
+ADD
+RETURN
+```
+
+
+## Bytecode VM
+
+For R code, once the AST is compiled to a bytecode object, this object 
+is executed by the *R bytecode VM*.
+
+
+## Bytecode object
+
+When R code is compiled to bytecode the result is an *R bytecode object*.
+
+When R bytecode assembly is compiled the result is again an *R bytecode object*.
+
+An *R bytecode object* can be directly executed via a call to `eval()`
+
+## Compiler
+
+A mechanism for turning instructions from one format to another e.g. R code to AST.
+
+
+
+
+

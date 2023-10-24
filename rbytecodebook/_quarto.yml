@@ -1,0 +1,44 @@
+project:
+  type: book
+  output-dir: ../../coolbutuseless.github.io/book/rbytecodebook
+
+book:
+  title: "R Bytecode Book"
+  author: "mikefc@coolbutuseless.com"
+  date: "2023-10-22"
+  cover-image: figures/logo.png
+  chapters:
+    - index.qmd
+    - 01-intro.qmd
+    - 05-how-r-executes-code.qmd
+    - 06-disassembly.qmd
+    - 07-assembly.qmd
+    - 08-assembly-details.qmd
+    - 12-bytecode-assembly-syntax.qmd
+    - 15-stored-expressions.qmd
+    - 20-op-reference-auto.qmd
+    - 98-summary.qmd
+    - 99-references.qmd
+    - a10-functions-special-builtin.qmd
+    - a20-op-index-opcode.qmd
+    - a25-step-by-step.qmd
+    - a30-glossary.qmd
+    
+bibliography: references.bib
+
+format:
+  epub: 
+    toc: 
+      true
+    date: 
+      "2023-10-22"
+    lang:
+      en-GB
+  pdf:
+    documentclass: scrreprt
+    cover-image: figures/logo.png
+  html:
+    theme: cosmo
+
+
+

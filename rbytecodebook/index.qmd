@@ -1,0 +1,22 @@
+# Preface {.unnumbered}
+
+This is a book about the bytecode which drives the virtual machine at the
+heart of R code execution.
+
+R is a tricky beast.   
+
+It never ceases to amaze and anger me with its funky syntax, weird errors,
+expressive vector syntax, meta-programming, functional leanings and all
+manner of pearls and warts.
+
+I (weirdly) enjoy the process of understanding R.  I like breaking it to 
+see how it works, and doing cool (but useless) things with it - purely 
+for the fun in doing so.
+
+This book represents my current (and still evolving) understanding of bytecode, 
+and I hope to use this understanding to break R in new and exciting ways.
+
+### Acknowledgements
+
+Thanks to the great work from the R Core Team for R itself and the `{compiler}` package.
+

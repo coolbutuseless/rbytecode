@@ -1,0 +1,163 @@
+
+```{r include=FALSE}
+library(rbytecode)
+```
+
+# Stored Expressions {#sec-stored-expressions}
+
+Stored Expressions are a tricky thing to describe: they are essential arguments
+to many instructions, but almost never evaluated when code is run in the VM. 
+
+The expression to store makes natural sense when bytecode is created from the 
+abstract syntax tree, but makes little sense when writing bytecode assembly.
+
+`{rbytecode}` makes the choice to never reuiqre the user to specify a stored
+expression argument.  It will be done automatically as part of the compilation
+process, however it can be specified as an annotation to the instruction
+if desired.
+
+## Introduction
+
+
+When R compiles standard R code to bytecode, it also stores the expression
+which produced this bytecode (when appropriate).
+
+This quoted expression is then used in a number of ways when R executes bytecode:
+
+1. When executing a bytecode instruction results in an error (e.g. if you attempt to
+`ADD` an integer and a string), R will show the stored expression as part of the error message.
+2. For `MATH1` operations, the function called in the stored expression
+is checked internally by R to ensure that it exactly matches the built-in 
+R operation.  If the stored expression differs from the specified argument 
+to the instruction, this results in the error "math1 compiler/interpreter mismatch" (an error that is impossible to 
+produce when running regular R code!).
+3. If the bytecode VM is not available, then the full stored expression (which
+represents the entirety of the original R code) is passed to the AST interpreter.
+4. When an inlined function is invalid `BASEGUARD`, the bytecode is skipped
+and the stored expression is executed in the AST interpreter. (unconfirmed).
+
+
+## Stored Expressions and the `{rbytecode}` compiler.
+
+As discussed above, the stored expressions are a linkage between standard R code
+and the compiled R bytecode.
+
+However, in `rbytecode::asm()` there is no R expression to store alongside the bytecode.
+
+For the `MATH1` case, `{rbytecode}` ensures that a correct function call is installed
+in the stored expression. This avoids the very internal, very hard-to-trigger 
+error output"math1 compiler/interpreter mismatch"
+
+In general, `{rbytecode}` installs a dummy stored expression for each bytecode 
+instruction which needs one.  This dummy expression is an unevaluated call to `stop()`
+which includes information on the type of instruction and its location 
+in the source code.
+
+For example, if an attempt is made to `ADD` an integer and a character, 
+the error output is something like the following:
+
+```
+Error in stop(op = "ADD", row = 9L, line = 10L, depth = 0L) : 
+  non-numeric argument to binary operator
+```
+
+Note in the error message the following information: the type of the op, the `row` (in the `bcdf`) where
+this occurred, the `line` number if available and the recursion depth 
+at which this occurred.
+
+
+## R prints stored expressions when there is an error
+
+### Triggering an error using R code
+
+```{r error=TRUE}
+bcdf <- disq({
+  x <- 1
+  y <- 'a'
+  x + y
+}, incl_expr = TRUE)
+
+bcdf
+
+compile_bcdf(bcdf) |> eval()
+```
+
+### Setting our own stored expression to be used as an error message
+
+```{r error=TRUE}
+code <- r"(
+LDCONST 1
+SETVAR x
+POP
+LDCONST "a"
+SETVAR y
+POP
+GETVAR x
+GETVAR y
+ADD           $$ bluey + bingo
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+
+## Stored Expressions 2: `MATH1` instructions check validity of stored expressions
+
+The following code shows that `sin(x)` is stored as the expression for the `MATH1`
+operation i.e. the statement after `$$` on that line.
+
+```{r error=TRUE}
+bcdf <- disq({
+  x <- 1
+  sin(x)
+}, incl_expr = TRUE)
+
+bcdf |> as.character(incl_expr = TRUE)
+
+compile_bcdf(bcdf) |> eval()
+```
+
+We can set our own stored expression and trigger an error in evaluation because
+the specified operation does not match the stored expression.
+
+```{r error=TRUE}
+code <- r"(
+LDCONST 1
+SETVAR x
+POP
+BASEGUARD @label1
+GETVAR x
+MATH1 sin   $$ cos(x)
+@label1
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+
+## Stored expressions are evaluated if R does not have bytecode VM enabled
+
+```{r}
+code <- r"(
+GETFUN message
+PUSHCONSTARG "Bytecode VM"
+CALL
+RETURN
+)"
+
+bc <- asm(code, expr_default = quote(message("AST Interpreter")))
+
+eval(bc)
+```
+
+On a standard R installation, this shows the message `Bytecode VM`.
+
+If you evaluate this bytecode object on an installation of R which does not have the
+bytecode VM enabled, then it will execute the default stored expression via
+the AST interpreter and show the message `AST Interpreter`.
+
+We can see this in action this by serializing the bytecode object here and unserializing it and 
+evaluating it on R/WASM - as of October 2023, the WASM version of R ([here](https://webr.r-wasm.org/latest/)) is 
+v4 of R with only the AST interpreter enabled.

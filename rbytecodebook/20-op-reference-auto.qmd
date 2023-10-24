@@ -1,0 +1,4744 @@
+# Instruction Reference {#sec-op}
+
+```{r setup, include=FALSE}
+library(rbytecode)
+```
+
+
+This chapter has a complete listing of all bytecode instructions.
+
+It includes a summary of what the bytecode does, the arguments required and
+an indication of the instructions stack usage.
+
+Examples using this bytecode from bytecode assembly and R code are also 
+included where possible.
+
+
+{{< pagebreak >}}
+
+## `ADD` {#sec-ADD}
+
+**Add values**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |ADD   |
+|Value          |44    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `ADD` Bytecode Assembly Example 
+
+```{r ADD, error=TRUE}
+code <- r"(
+# 1 + 2
+LDCONST 1
+LDCONST 2
+ADD
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ADD` bytecode 
+
+```{r eval=FALSE}
+x + y
+```
+
+```{r echo=FALSE}
+disq(
+  x + y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `AND` {#sec-AND}
+
+**Vector logical AND**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |AND   |
+|Value          |57    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `AND` Bytecode Assembly Example 
+
+```{r AND, error=TRUE}
+code <- r"(
+LDCONST c(TRUE, TRUE, FALSE, FALSE)
+LDCONST c(FALSE, TRUE, FALSE, TRUE)
+AND
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `AND` bytecode 
+
+```{r eval=FALSE}
+x & y
+```
+
+```{r echo=FALSE}
+disq(
+  x & y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `AND1ST` {#sec-AND1ST}
+
+**Scalar logical AND (Part 1)**
+
+Scalar logical AND in R supports "short-circuiting" the operation i.e. if the first argument is FALSE, then the second argument is never evaluated.
+
+The AND1ST instruction pops a value from the stack, and if FALSE jumps to the position specified in its label argument i.e. the position after the end of the trailing `AND2ND` statement.
+
+Following the `AND1ST` instruction is the code for the right-hand side of the AND operation and which is concluded with an `AND2ND` statement.
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |AND1ST |
+|Value          |88     |
+|Number of Args |1      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                         |
+|--------:|:-----|:---------------------------------------------------|
+|        1|label |Location to jump to if first logical value is FALSE |
+
+### `AND1ST` Bytecode Assembly Example 
+
+```{r AND1ST, error=TRUE}
+code <- r"(
+# TRUE && FALSE
+LDTRUE
+AND1ST @label1
+LDFALSE
+AND2ND
+@label1
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `AND1ST` bytecode 
+
+```{r eval=FALSE}
+x && y
+```
+
+```{r echo=FALSE}
+disq(
+  x && y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `AND2ND` {#sec-AND2ND}
+
+**Scalar logical AND (Part 2)**
+
+See the `AND1ST` instruction [Section -@sec-AND1ST]
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |AND2ND |
+|Value          |89     |
+|Number of Args |0      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+### `AND2ND` Bytecode Assembly Example 
+
+```{r AND2ND, error=TRUE}
+code <- r"(
+LDTRUE
+AND1ST @label1
+LDFALSE
+AND2ND
+@label1
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `AND2ND` bytecode 
+
+```{r eval=FALSE}
+x && y
+```
+
+```{r echo=FALSE}
+disq(
+  x && y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `BASEGUARD` {#sec-BASEGUARD}
+
+**Guard execution of base R functions**
+
+Baseguard guards against the scenario that the the following function is not the default function builtin to R.
+
+### Hypothesis
+
+If the fetched function is not identical to the builtin (because there is a user-defined function of the same name that takes precedence), then the expression (at the *expridx*) is evaluated in the interpreter instead. 
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |BASEGUARD |
+|Value          |123       |
+|Number of Args |1         |
+|Has expr index |TRUE      |
+|Stack Pop      |0         |
+|Stack Push     |0         |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                  |
+|--------:|:-----|:--------------------------------------------|
+|        1|label |Location to jump to if function is not valid |
+
+### `BASEGUARD` Bytecode Assembly Example 
+
+```{r BASEGUARD, error=TRUE}
+code <- r"(
+BASEGUARD @label1
+GETBUILTIN list
+PUSHCONSTARG 1
+PUSHCONSTARG 2
+CALLBUILTIN
+@label1
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `BASEGUARD` bytecode 
+
+```{r eval=FALSE}
+list(a, b, c)
+```
+
+```{r echo=FALSE}
+disq(
+  list(a, b, c)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `BCMISMATCH` {#sec-BCMISMATCH}
+
+**Raise error to indicate bytecode version mismatch**
+
+Raises an error indicating the bytecode version does not match the current bytecode engine in R.
+
+This error could happen if bytecode compiled on an old version of R is exectuted on a newer version.
+
+The bytecode version is stored as the first integer in the compiled bytecode.
+
+As of R v4.3.1, bytecode is at version 12.
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |BCMISMATCH |
+|Value          |0          |
+|Number of Args |0          |
+|Has expr index |FALSE      |
+|Stack Pop      |0          |
+|Stack Push     |0          |
+
+{{< pagebreak >}}
+
+## `BRIFNOT` {#sec-BRIFNOT}
+
+**Branch if not TRUE**
+
+Note: There is no instruction for "Branch if TRUE"
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |BRIFNOT |
+|Value          |3       |
+|Number of Args |1       |
+|Has expr index |TRUE    |
+|Stack Pop      |1       |
+|Stack Push     |0       |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                            |
+|--------:|:-----|:------------------------------------------------------|
+|        1|label |Location to jump to if value popped off stack is FALSE |
+
+### `BRIFNOT` Bytecode Assembly Example 
+
+```{r BRIFNOT, error=TRUE}
+code <- r"(
+LDFALSE
+BRIFNOT @label1
+LDCONST 1
+RETURN
+@label1
+LDCONST 2
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `BRIFNOT` bytecode 
+
+```{r eval=FALSE}
+if (x > 5) print('hello')
+```
+
+```{r echo=FALSE}
+disq(
+  if (x > 5) print('hello')
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `CALL` {#sec-CALL}
+
+**Call function specified by GETFUN**
+
+The list of arguments (separate from the stack and the consts storage) is created by calls to `PUSHARG`, `PUSHCONSTARG` etc.
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |CALL  |
+|Value          |38    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |0     |
+|Stack Push     |1     |
+
+### `CALL` Bytecode Assembly Example 
+
+```{r CALL, error=TRUE}
+code <- r"(
+GETFUN print
+PUSHCONSTARG "hello"
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `CALL` bytecode 
+
+```{r eval=FALSE}
+runif(3)
+```
+
+```{r echo=FALSE}
+disq(
+  runif(3)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `CALLBUILTIN` {#sec-CALLBUILTIN}
+
+**Call a builtin function**
+
+The list of arguments (separate from the stack and the consts storage) is created by calls to `PUSHARG`, `PUSHCONSTARG` etc.
+
+See Builtin Functions ([Section -@sec-builtinfunctions]) for background and a list of built-in functions.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |CALLBUILTIN |
+|Value          |39          |
+|Number of Args |0           |
+|Has expr index |TRUE        |
+|Stack Pop      |0           |
+|Stack Push     |1           |
+
+### `CALLBUILTIN` Bytecode Assembly Example 
+
+```{r CALLBUILTIN, error=TRUE}
+code <- r"(
+GETBUILTIN list
+PUSHCONSTARG 1
+PUSHCONSTARG 2
+CALLBUILTIN
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `CALLBUILTIN` bytecode 
+
+```{r eval=FALSE}
+c(a, b, c)
+```
+
+```{r echo=FALSE}
+disq(
+  c(a, b, c)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `CALLSPECIAL` {#sec-CALLSPECIAL}
+
+**Call a special function**
+
+See Special Functions ([Section -@sec-specialfunctions]) for background and a list of special functions.
+
+Note that `CALLSPECIAL` takes a single argument that is the full expression of the function to be called including the arguments.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |CALLSPECIAL |
+|Value          |40          |
+|Number of Args |1           |
+|Has expr index |FALSE       |
+|Stack Pop      |0           |
+|Stack Push     |1           |
+
+Table: Argument summary
+
+| Argument|Type |Description                                                                                                                             |
+|--------:|:----|:---------------------------------------------------------------------------------------------------------------------------------------|
+|        1|asis |Character string which parses to a valid expression calling a "special" function.
+
+See [Section -@sec-specialfunctions] for more details. |
+
+### `CALLSPECIAL` Bytecode Assembly Example 
+
+```{r CALLSPECIAL, error=TRUE}
+code <- r"(
+CALLSPECIAL rep(1, 3)
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `CALLSPECIAL` bytecode 
+
+```{r eval=FALSE}
+rep(1, 3)
+```
+
+```{r echo=FALSE}
+disq(
+  rep(1, 3)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `CHECKFUN` {#sec-CHECKFUN}
+
+**Check a function call is valid**
+
+This instruction checks that the value on top of the stack is a function.  This is only needed when the function is referenced by something other than a symbol.  E.g. `list(10)` does not generate this instruction, but `get('list')(10)` does.
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |CHECKFUN |
+|Value          |28       |
+|Number of Args |0        |
+|Has expr index |FALSE    |
+|Stack Pop      |?        |
+|Stack Push     |?        |
+
+### Example R code producing `CHECKFUN` bytecode 
+
+```{r eval=FALSE}
+get('list')(10)
+```
+
+```{r echo=FALSE}
+disq(
+  get('list')(10)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `COLON` {#sec-COLON}
+
+**Colon operator e.g. 1:5**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |COLON |
+|Value          |120   |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `COLON` Bytecode Assembly Example 
+
+```{r COLON, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 5
+COLON
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `COLON` bytecode 
+
+```{r eval=FALSE}
+x:y
+```
+
+```{r echo=FALSE}
+disq(
+  x:y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DDVAL` {#sec-DDVAL}
+
+**Get a double-dot value**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |DDVAL |
+|Value          |21    |
+|Number of Args |1     |
+|Has expr index |FALSE |
+|Stack Pop      |      |
+|Stack Push     |      |
+
+Table: Argument summary
+
+| Argument|Type |Description            |
+|--------:|:----|:----------------------|
+|        1|name |Name of value to fetch |
+
+### Example R code producing `DDVAL` bytecode 
+
+```{r eval=FALSE}
+function(...) print(..3)
+```
+
+```{r echo=FALSE}
+disq(
+  function(...) print(..3)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DDVAL_MISSOK` {#sec-DDVAL_MISSOK}
+
+**Get a double-dot value. OK if it is missing**
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |DDVAL_MISSOK |
+|Value          |93           |
+|Number of Args |1            |
+|Has expr index |FALSE        |
+|Stack Pop      |             |
+|Stack Push     |             |
+
+Table: Argument summary
+
+| Argument|Type |Description            |
+|--------:|:----|:----------------------|
+|        1|name |Name of value to fetch |
+
+{{< pagebreak >}}
+
+## `DECLNK` {#sec-DECLNK}
+
+**Decrease link count on next stack item**
+
+The `INCLNK` and `DECLNK` instructions are used to protect evaluated arguents on the stack from 
+modifications during evaluation of subsequent arguments.
+
+Help needed: R code example which uses this instruction.
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |DECLNK |
+|Value          |125    |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+{{< pagebreak >}}
+
+## `DECLNK_N` {#sec-DECLNK_N}
+
+**Decrease link count on N stack items**
+
+Same as DECLNK for for n values?
+
+Help needed: R code example which uses this instruciton.
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |DECLNK_N |
+|Value          |126      |
+|Number of Args |1        |
+|Has expr index |FALSE    |
+|Stack Pop      |         |
+|Stack Push     |         |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                                              |
+|--------:|:-----|:------------------------------------------------------------------------|
+|        1|const |Integer count of items in the stack on which to decrease the link count. |
+
+{{< pagebreak >}}
+
+## `DECLNKSTK` {#sec-DECLNKSTK}
+
+**Decrease link count on the stack istelf after not-top-level complex assignment**
+
+Unprotect stack after non-top-level complex assignment.  This instruction pairs with `INCLNKSTK`.
+
+Help needed: R code example which uses this instruction.
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |DECLNKSTK |
+|Value          |128       |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |          |
+|Stack Push     |          |
+
+{{< pagebreak >}}
+
+## `DFLTC` {#sec-DFLTC}
+
+**Deprecated instruction**
+
+This is a vestigal instruction that used to be paired with an opening `STARTC` to peform the equivalent of `c(...)`.
+
+Now that `c()` is a builtin function, use `GETBUILTIN` and `CALLBUILTIN` instead.
+
+See also R source `main/eval.c` where comments indicate this OP is no longer used.
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |DFLTC |
+|Value          |68    |
+|Number of Args |0     |
+|Has expr index |FALSE |
+|Stack Pop      |NA    |
+|Stack Push     |NA    |
+
+{{< pagebreak >}}
+
+## `DFLTSUBASSIGN` {#sec-DFLTSUBASSIGN}
+
+**Default subassignment with `[]`**
+
+Table: Instruction summary
+
+|               |value         |
+|:--------------|:-------------|
+|Name           |DFLTSUBASSIGN |
+|Value          |66            |
+|Number of Args |0             |
+|Has expr index |FALSE         |
+|Stack Pop      |              |
+|Stack Push     |              |
+
+### Example R code producing `DFLTSUBASSIGN` bytecode 
+
+```{r eval=FALSE}
+a[] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  a[] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DFLTSUBASSIGN2` {#sec-DFLTSUBASSIGN2}
+
+**Default subassignment with `[[]]`**
+
+Table: Instruction summary
+
+|               |value          |
+|:--------------|:--------------|
+|Name           |DFLTSUBASSIGN2 |
+|Value          |72             |
+|Number of Args |0              |
+|Has expr index |FALSE          |
+|Stack Pop      |               |
+|Stack Push     |               |
+
+### Example R code producing `DFLTSUBASSIGN2` bytecode 
+
+```{r eval=FALSE}
+a[[]] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  a[[]] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DFLTSUBSET` {#sec-DFLTSUBSET}
+
+**Default subset with `[]`**
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |DFLTSUBSET |
+|Value          |64         |
+|Number of Args |0          |
+|Has expr index |FALSE      |
+|Stack Pop      |           |
+|Stack Push     |           |
+
+### Example R code producing `DFLTSUBSET` bytecode 
+
+```{r eval=FALSE}
+a[]
+```
+
+```{r echo=FALSE}
+disq(
+  a[]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DFLTSUBSET2` {#sec-DFLTSUBSET2}
+
+**Default subset with `[[]]`**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |DFLTSUBSET2 |
+|Value          |70          |
+|Number of Args |0           |
+|Has expr index |FALSE       |
+|Stack Pop      |            |
+|Stack Push     |            |
+
+### Example R code producing `DFLTSUBSET2` bytecode 
+
+```{r eval=FALSE}
+a[[]]
+```
+
+```{r echo=FALSE}
+disq(
+  a[[]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DIV` {#sec-DIV}
+
+**Division**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |DIV   |
+|Value          |47    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `DIV` Bytecode Assembly Example 
+
+```{r DIV, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 2
+DIV
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `DIV` bytecode 
+
+```{r eval=FALSE}
+x / y
+```
+
+```{r echo=FALSE}
+disq(
+  x / y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DODOTS` {#sec-DODOTS}
+
+**Process `...`**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |DODOTS |
+|Value          |32     |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |       |
+|Stack Push     |       |
+
+{{< pagebreak >}}
+
+## `DOLLAR` {#sec-DOLLAR}
+
+**`$`operator when used to fetch a value**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |DOLLAR |
+|Value          |73     |
+|Number of Args |1      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type |Description                                  |
+|--------:|:----|:--------------------------------------------|
+|        1|name |RHS name for `$`.  LHS is popped from stack. |
+
+### Example R code producing `DOLLAR` bytecode 
+
+```{r eval=FALSE}
+x$y
+```
+
+```{r echo=FALSE}
+disq(
+  x$y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DOLLARGETS` {#sec-DOLLARGETS}
+
+**`$` operator when used to set a value**
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |DOLLARGETS |
+|Value          |74         |
+|Number of Args |1          |
+|Has expr index |TRUE       |
+|Stack Pop      |           |
+|Stack Push     |           |
+
+Table: Argument summary
+
+| Argument|Type |Description                                  |
+|--------:|:----|:--------------------------------------------|
+|        1|name |RHS name for `$`.  LHS is popped from stack. |
+
+### Example R code producing `DOLLARGETS` bytecode 
+
+```{r eval=FALSE}
+a$b <- 3
+```
+
+```{r echo=FALSE}
+disq(
+  a$b <- 3
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DOLOOPBREAK` {#sec-DOLOOPBREAK}
+
+**Purpose currently unknown.**
+
+Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |DOLOOPBREAK |
+|Value          |10          |
+|Number of Args |0           |
+|Has expr index |FALSE       |
+|Stack Pop      |            |
+|Stack Push     |            |
+
+{{< pagebreak >}}
+
+## `DOLOOPNEXT` {#sec-DOLOOPNEXT}
+
+**Purpose currently unknown.**
+
+Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |DOLOOPNEXT |
+|Value          |9          |
+|Number of Args |0          |
+|Has expr index |FALSE      |
+|Stack Pop      |           |
+|Stack Push     |           |
+
+{{< pagebreak >}}
+
+## `DOMISSING` {#sec-DOMISSING}
+
+**Handle missing arguments**
+
+Handling for missing arguments when function arguments being assessed at time of call
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |DOMISSING |
+|Value          |30        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |          |
+|Stack Push     |          |
+
+### Example R code producing `DOMISSING` bytecode 
+
+```{r eval=FALSE}
+f(x = )
+```
+
+```{r echo=FALSE}
+disq(
+  f(x = )
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DOTCALL` {#sec-DOTCALL}
+
+**Call a C function**
+
+This instruction is a specialised call for up to 16 arguments.  For 17 or more arguments, need to use `CALLBUILTIN` instead.
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |DOTCALL |
+|Value          |119     |
+|Number of Args |1       |
+|Has expr index |TRUE    |
+|Stack Pop      |        |
+|Stack Push     |        |
+
+Table: Argument summary
+
+| Argument|Type  |Description                       |
+|--------:|:-----|:---------------------------------|
+|        1|value |Number of arguments to this call. |
+
+### Example R code producing `DOTCALL` bytecode 
+
+```{r eval=FALSE}
+.Call(hello, x, y, z)
+```
+
+```{r echo=FALSE}
+disq(
+  .Call(hello, x, y, z)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `DOTSERR` {#sec-DOTSERR}
+
+**Trigger error when `...` used out of context**
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |DOTSERR |
+|Value          |60      |
+|Number of Args |0       |
+|Has expr index |FALSE   |
+|Stack Pop      |        |
+|Stack Push     |        |
+
+### `DOTSERR` Bytecode Assembly Example 
+
+```{r DOTSERR, error=TRUE}
+code <- r"(
+DOTSERR
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `DUP` {#sec-DUP}
+
+**Duplicate the top value in the stack to make it the first two values in the stack.**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |DUP   |
+|Value          |5     |
+|Number of Args |0     |
+|Has expr index |FALSE |
+|Stack Pop      |1     |
+|Stack Push     |2     |
+
+### `DUP` Bytecode Assembly Example 
+
+```{r DUP, error=TRUE}
+code <- r"(
+LDCONST 1
+DUP
+ADD
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `DUP2ND` {#sec-DUP2ND}
+
+**Duplicate the second value in the stack to push it onto the stack (so it is the first item)**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |DUP2ND |
+|Value          |101    |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |2      |
+|Stack Push     |3      |
+
+### `DUP2ND` Bytecode Assembly Example 
+
+```{r DUP2ND, error=TRUE}
+code <- r"(
+LDCONST 10
+LDCONST 20
+DUP2ND
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `ENDASSIGN` {#sec-ENDASSIGN}
+
+**Mark the end of an assignment operation started with `STARTASSIGN`**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |ENDASSIGN |
+|Value          |62        |
+|Number of Args |1         |
+|Has expr index |FALSE     |
+|Stack Pop      |          |
+|Stack Push     |          |
+
+Table: Argument summary
+
+| Argument|Type |Description                                         |
+|--------:|:----|:---------------------------------------------------|
+|        1|name |Name of variable into which value is being assigned |
+
+### Example R code producing `ENDASSIGN` bytecode 
+
+```{r eval=FALSE}
+a[1] <- 2
+```
+
+```{r echo=FALSE}
+disq(
+  a[1] <- 2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ENDASSIGN2` {#sec-ENDASSIGN2}
+
+**Mark the end of an assignment operation started with `STARTASSIGN2`**
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |ENDASSIGN2 |
+|Value          |97         |
+|Number of Args |1          |
+|Has expr index |FALSE      |
+|Stack Pop      |           |
+|Stack Push     |           |
+
+Table: Argument summary
+
+| Argument|Type |Description                                         |
+|--------:|:----|:---------------------------------------------------|
+|        1|name |Name of variable into which value is being assigned |
+
+{{< pagebreak >}}
+
+## `ENDFOR` {#sec-ENDFOR}
+
+**Signify end of `for` loop.**
+
+See also [STEPFOR  Section -@sec-STEPFOR] and [STARTFOR Section -@sec-STARTFOR].
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |ENDFOR |
+|Value          |13     |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |       |
+|Stack Push     |       |
+
+### Example R code producing `ENDFOR` bytecode 
+
+```{r eval=FALSE}
+for(i in 1:3) {print(i)}
+```
+
+```{r echo=FALSE}
+disq(
+  for(i in 1:3) {print(i)}
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ENDLOOPCNTXT` {#sec-ENDLOOPCNTXT}
+
+**End loop context**
+
+See `STARTLOOPCNTXT` ([Section -@sec-STARTLOOPCNTXT])
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |ENDLOOPCNTXT |
+|Value          |8            |
+|Number of Args |0            |
+|Has expr index |TRUE         |
+|Stack Pop      |             |
+|Stack Push     |             |
+
+{{< pagebreak >}}
+
+## `EQ` {#sec-EQ}
+
+**Test equality**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |EQ    |
+|Value          |51    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `EQ` Bytecode Assembly Example 
+
+```{r EQ, error=TRUE}
+code <- r"(
+LDCONST 2
+LDCONST 2
+EQ
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `EQ` bytecode 
+
+```{r eval=FALSE}
+x == 4
+```
+
+```{r echo=FALSE}
+disq(
+  x == 4
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `EXP` {#sec-EXP}
+
+**Exponential**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |EXP   |
+|Value          |50    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### `EXP` Bytecode Assembly Example 
+
+```{r EXP, error=TRUE}
+code <- r"(
+LDCONST 2
+EXP
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `EXP` bytecode 
+
+```{r eval=FALSE}
+exp(x)
+```
+
+```{r echo=FALSE}
+disq(
+  exp(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `EXPT` {#sec-EXPT}
+
+**Exponent. **
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |EXPT  |
+|Value          |48    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `EXPT` Bytecode Assembly Example 
+
+```{r EXPT, error=TRUE}
+code <- r"(
+LDCONST 2
+LDCONST 3
+EXPT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `EXPT` bytecode 
+
+```{r eval=FALSE}
+x^2
+```
+
+```{r echo=FALSE}
+disq(
+  x^2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GE` {#sec-GE}
+
+**Test greater than or equal to**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |GE    |
+|Value          |55    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `GE` Bytecode Assembly Example 
+
+```{r GE, error=TRUE}
+code <- r"(
+LDCONST 7
+LDCONST 5
+GE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GE` bytecode 
+
+```{r eval=FALSE}
+x >= 5
+```
+
+```{r echo=FALSE}
+disq(
+  x >= 5
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GETBUILTIN` {#sec-GETBUILTIN}
+
+**Get a built-in function**
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |GETBUILTIN |
+|Value          |26         |
+|Number of Args |1          |
+|Has expr index |FALSE      |
+|Stack Pop      |0          |
+|Stack Push     |1          |
+
+Table: Argument summary
+
+| Argument|Type |Description                                                                       |
+|--------:|:----|:---------------------------------------------------------------------------------|
+|        1|name |Name of builtin function.  See [Section -@sec-builtinfunctions] for more details. |
+
+### `GETBUILTIN` Bytecode Assembly Example 
+
+```{r GETBUILTIN, error=TRUE}
+code <- r"(
+GETBUILTIN list
+PUSHCONSTARG 1.23
+CALLBUILTIN
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GETBUILTIN` bytecode 
+
+```{r eval=FALSE}
+list(1, x)
+```
+
+```{r echo=FALSE}
+disq(
+  list(1, x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GETFUN` {#sec-GETFUN}
+
+**Get a named function**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |GETFUN |
+|Value          |23     |
+|Number of Args |1      |
+|Has expr index |FALSE  |
+|Stack Pop      |0      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of function |
+
+### `GETFUN` Bytecode Assembly Example 
+
+```{r GETFUN, error=TRUE}
+code <- r"(
+GETFUN runif
+PUSHCONSTARG 3
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GETFUN` bytecode 
+
+```{r eval=FALSE}
+fn(1)
+```
+
+```{r echo=FALSE}
+disq(
+  fn(1)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GETGLOBFUN` {#sec-GETGLOBFUN}
+
+**Get a named function from the global environment (Unconfirmed)**
+
+Help needed: R code which uses this instruction.
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |GETGLOBFUN |
+|Value          |24         |
+|Number of Args |1          |
+|Has expr index |FALSE      |
+|Stack Pop      |           |
+|Stack Push     |           |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of function |
+
+{{< pagebreak >}}
+
+## `GETINTLBUILTIN` {#sec-GETINTLBUILTIN}
+
+**Get an internal function**
+
+Table: Instruction summary
+
+|               |value          |
+|:--------------|:--------------|
+|Name           |GETINTLBUILTIN |
+|Value          |27             |
+|Number of Args |1              |
+|Has expr index |FALSE          |
+|Stack Pop      |               |
+|Stack Push     |               |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of function |
+
+### Example R code producing `GETINTLBUILTIN` bytecode 
+
+```{r eval=FALSE}
+.Internal(disassemble(asm("RETURN")))
+```
+
+```{r echo=FALSE}
+disq(
+  .Internal(disassemble(asm("RETURN")))
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GETSYMFUN` {#sec-GETSYMFUN}
+
+**Get a function by its symbol (Unconfirmed)**
+
+Help needed: R code which uses this instruction.
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |GETSYMFUN |
+|Value          |25        |
+|Number of Args |1         |
+|Has expr index |FALSE     |
+|Stack Pop      |          |
+|Stack Push     |          |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of function |
+
+{{< pagebreak >}}
+
+## `GETTER_CALL` {#sec-GETTER_CALL}
+
+**Used in complex assignment expressions**
+
+Help needed: R code which uses this instruction.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |GETTER_CALL |
+|Value          |99          |
+|Number of Args |0           |
+|Has expr index |TRUE        |
+|Stack Pop      |            |
+|Stack Push     |            |
+
+{{< pagebreak >}}
+
+## `GETVAR` {#sec-GETVAR}
+
+**Get a named variable**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |GETVAR |
+|Value          |20     |
+|Number of Args |1      |
+|Has expr index |FALSE  |
+|Stack Pop      |0      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of variable |
+
+### `GETVAR` Bytecode Assembly Example 
+
+```{r GETVAR, error=TRUE}
+code <- r"(
+LDCONST 1
+SETVAR x
+POP
+GETBUILTIN list
+GETVAR x
+PUSHARG
+CALLBUILTIN
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GETVAR` bytecode 
+
+```{r eval=FALSE}
+1 + x
+```
+
+```{r echo=FALSE}
+disq(
+  1 + x
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GETVAR_MISSOK` {#sec-GETVAR_MISSOK}
+
+**Get a named variable. Missing values allowed.**
+
+Table: Instruction summary
+
+|               |value         |
+|:--------------|:-------------|
+|Name           |GETVAR_MISSOK |
+|Value          |92            |
+|Number of Args |1             |
+|Has expr index |FALSE         |
+|Stack Pop      |              |
+|Stack Push     |              |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of variable |
+
+### Example R code producing `GETVAR_MISSOK` bytecode 
+
+```{r eval=FALSE}
+a[i]
+```
+
+```{r echo=FALSE}
+disq(
+  a[i]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GOTO` {#sec-GOTO}
+
+**Jump to the labelled location**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |GOTO  |
+|Value          |2     |
+|Number of Args |1     |
+|Has expr index |FALSE |
+|Stack Pop      |0     |
+|Stack Push     |0     |
+
+Table: Argument summary
+
+| Argument|Type  |Description         |
+|--------:|:-----|:-------------------|
+|        1|label |Location to jump to |
+
+### `GOTO` Bytecode Assembly Example 
+
+```{r GOTO, error=TRUE}
+code <- r"(
+  LDCONST 5
+  LDCONST 4
+  GE
+  BRIFNOT @label1
+  LDCONST 66
+  GOTO @label2
+  @label1
+  LDCONST 99
+  RETURN
+  @label2
+  RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GOTO` bytecode 
+
+```{r eval=FALSE}
+while(TRUE) print('hello')
+```
+
+```{r echo=FALSE}
+disq(
+  while(TRUE) print('hello')
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `GT` {#sec-GT}
+
+**Test greater than**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |GT    |
+|Value          |56    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `GT` Bytecode Assembly Example 
+
+```{r GT, error=TRUE}
+code <- r"(
+LDCONST 7
+LDCONST 5
+GT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `GT` bytecode 
+
+```{r eval=FALSE}
+x > 5
+```
+
+```{r echo=FALSE}
+disq(
+  x > 5
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `INCLNK` {#sec-INCLNK}
+
+**Protect evaluated arguments on the stack.**
+
+The `INCLNK` and `DECLNK` instructions are used to protect evaluated arguents on the stack from 
+modifications during evaluation of subsequent arguments.
+
+Help needed: R code which uses this instruction.
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |INCLNK |
+|Value          |124    |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+{{< pagebreak >}}
+
+## `INCLNKSTK` {#sec-INCLNKSTK}
+
+**Protect evaluated arguments on the stack.**
+
+Protect stack during a non-top-level complex assignment.  This instruction must be paired with `DECLNKSTK`.
+
+Help needed: R code which uses this instruction.
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |INCLNKSTK |
+|Value          |127       |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+{{< pagebreak >}}
+
+## `INVISIBLE` {#sec-INVISIBLE}
+
+**Mark a value as invisible.**
+
+A bytecode version of the `invisible()` function.
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |INVISIBLE |
+|Value          |15        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+### `INVISIBLE` Bytecode Assembly Example 
+
+```{r INVISIBLE, error=TRUE}
+code <- r"(
+LDCONST 1
+INVISIBLE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `ISCHARACTER` {#sec-ISCHARACTER}
+
+**Test is character**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |ISCHARACTER |
+|Value          |80          |
+|Number of Args |0           |
+|Has expr index |FALSE       |
+|Stack Pop      |1           |
+|Stack Push     |1           |
+
+### `ISCHARACTER` Bytecode Assembly Example 
+
+```{r ISCHARACTER, error=TRUE}
+code <- r"(
+LDCONST "a"
+ISCHARACTER
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISCHARACTER` bytecode 
+
+```{r eval=FALSE}
+is.character(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.character(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISCOMPLEX` {#sec-ISCOMPLEX}
+
+**Test is complex**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |ISCOMPLEX |
+|Value          |79        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+### `ISCOMPLEX` Bytecode Assembly Example 
+
+```{r ISCOMPLEX, error=TRUE}
+code <- r"(
+LDCONST 1i
+ISCOMPLEX
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISCOMPLEX` bytecode 
+
+```{r eval=FALSE}
+is.complex(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.complex(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISDOUBLE` {#sec-ISDOUBLE}
+
+**Test is double**
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |ISDOUBLE |
+|Value          |78       |
+|Number of Args |0        |
+|Has expr index |FALSE    |
+|Stack Pop      |1        |
+|Stack Push     |1        |
+
+### `ISDOUBLE` Bytecode Assembly Example 
+
+```{r ISDOUBLE, error=TRUE}
+code <- r"(
+LDCONST 1.23
+ISDOUBLE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISDOUBLE` bytecode 
+
+```{r eval=FALSE}
+is.double(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.double(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISINTEGER` {#sec-ISINTEGER}
+
+**Test is integer**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |ISINTEGER |
+|Value          |77        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+### `ISINTEGER` Bytecode Assembly Example 
+
+```{r ISINTEGER, error=TRUE}
+code <- r"(
+LDCONST 1L
+ISINTEGER
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISINTEGER` bytecode 
+
+```{r eval=FALSE}
+is.integer(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.integer(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISLOGICAL` {#sec-ISLOGICAL}
+
+**Test is logical**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |ISLOGICAL |
+|Value          |76        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+### `ISLOGICAL` Bytecode Assembly Example 
+
+```{r ISLOGICAL, error=TRUE}
+code <- r"(
+LDCONST TRUE
+ISLOGICAL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISLOGICAL` bytecode 
+
+```{r eval=FALSE}
+is.logical(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.logical(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISNULL` {#sec-ISNULL}
+
+**Test is NULL**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |ISNULL |
+|Value          |75     |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+### `ISNULL` Bytecode Assembly Example 
+
+```{r ISNULL, error=TRUE}
+code <- r"(
+LDNULL
+ISNULL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISNULL` bytecode 
+
+```{r eval=FALSE}
+is.null(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.null(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISNUMERIC` {#sec-ISNUMERIC}
+
+**Test is numeric**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |ISNUMERIC |
+|Value          |83        |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |1         |
+
+### `ISNUMERIC` Bytecode Assembly Example 
+
+```{r ISNUMERIC, error=TRUE}
+code <- r"(
+LDCONST 1
+ISNUMERIC
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `ISOBJECT` {#sec-ISOBJECT}
+
+**Test is object**
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |ISOBJECT |
+|Value          |82       |
+|Number of Args |0        |
+|Has expr index |FALSE    |
+|Stack Pop      |1        |
+|Stack Push     |1        |
+
+### `ISOBJECT` Bytecode Assembly Example 
+
+```{r ISOBJECT, error=TRUE}
+code <- r"(
+LDCONST "a"
+ISOBJECT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISOBJECT` bytecode 
+
+```{r eval=FALSE}
+is.object(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.object(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `ISSYMBOL` {#sec-ISSYMBOL}
+
+**Test is symbol**
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |ISSYMBOL |
+|Value          |81       |
+|Number of Args |0        |
+|Has expr index |FALSE    |
+|Stack Pop      |1        |
+|Stack Push     |1        |
+
+### `ISSYMBOL` Bytecode Assembly Example 
+
+```{r ISSYMBOL, error=TRUE}
+code <- r"(
+LDCONST 1.23
+ISSYMBOL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `ISSYMBOL` bytecode 
+
+```{r eval=FALSE}
+is.symbol(x)
+```
+
+```{r echo=FALSE}
+disq(
+  is.symbol(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LDCONST` {#sec-LDCONST}
+
+**Load a constant onto the stack**
+
+This instruction loads a value onto the stack.  This can be a vector or scalar.
+
+In the assembler in this package, and valid R expression may be given as the constant and its value will be evaluated at compile time. E.g.
+
+```{r eval=FALSE}
+LDCONST runif(3)
+RETURN
+```
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |LDCONST |
+|Value          |16      |
+|Number of Args |1       |
+|Has expr index |FALSE   |
+|Stack Pop      |0       |
+|Stack Push     |1       |
+
+Table: Argument summary
+
+| Argument|Type  |Description         |
+|--------:|:-----|:-------------------|
+|        1|const |Value or expression |
+
+### `LDCONST` Bytecode Assembly Example 
+
+```{r LDCONST, error=TRUE}
+code <- r"(
+LDCONST 1.23
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LDCONST` bytecode 
+
+```{r eval=FALSE}
+1 + x
+```
+
+```{r echo=FALSE}
+disq(
+  1 + x
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LDFALSE` {#sec-LDFALSE}
+
+**Load FALSE onto the stack**
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |LDFALSE |
+|Value          |19      |
+|Number of Args |0       |
+|Has expr index |FALSE   |
+|Stack Pop      |0       |
+|Stack Push     |1       |
+
+### `LDFALSE` Bytecode Assembly Example 
+
+```{r LDFALSE, error=TRUE}
+code <- r"(
+LDFALSE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LDFALSE` bytecode 
+
+```{r eval=FALSE}
+x & FALSE
+```
+
+```{r echo=FALSE}
+disq(
+  x & FALSE
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LDNULL` {#sec-LDNULL}
+
+**Load NULL onto the stack**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |LDNULL |
+|Value          |17     |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |0      |
+|Stack Push     |1      |
+
+### `LDNULL` Bytecode Assembly Example 
+
+```{r LDNULL, error=TRUE}
+code <- r"(
+LDNULL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LDNULL` bytecode 
+
+```{r eval=FALSE}
+NULL > x
+```
+
+```{r echo=FALSE}
+disq(
+  NULL > x
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LDTRUE` {#sec-LDTRUE}
+
+**Load TRUE onto the stack**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |LDTRUE |
+|Value          |18     |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |0      |
+|Stack Push     |1      |
+
+### `LDTRUE` Bytecode Assembly Example 
+
+```{r LDTRUE, error=TRUE}
+code <- r"(
+LDTRUE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LDTRUE` bytecode 
+
+```{r eval=FALSE}
+x & TRUE
+```
+
+```{r echo=FALSE}
+disq(
+  x & TRUE
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LE` {#sec-LE}
+
+**Test less than or equal to**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |LE    |
+|Value          |54    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `LE` Bytecode Assembly Example 
+
+```{r LE, error=TRUE}
+code <- r"(
+LDCONST 7
+LDCONST 5
+LE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LE` bytecode 
+
+```{r eval=FALSE}
+x <= 5
+```
+
+```{r echo=FALSE}
+disq(
+  x <= 5
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LOG` {#sec-LOG}
+
+**Log (base e)**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |LOG   |
+|Value          |116   |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### `LOG` Bytecode Assembly Example 
+
+```{r LOG, error=TRUE}
+code <- r"(
+LDCONST 2.71
+LOG
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LOG` bytecode 
+
+```{r eval=FALSE}
+log(x)
+```
+
+```{r echo=FALSE}
+disq(
+  log(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LOGBASE` {#sec-LOGBASE}
+
+**Log**
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |LOGBASE |
+|Value          |117     |
+|Number of Args |0       |
+|Has expr index |TRUE    |
+|Stack Pop      |2       |
+|Stack Push     |1       |
+
+### `LOGBASE` Bytecode Assembly Example 
+
+```{r LOGBASE, error=TRUE}
+code <- r"(
+LDCONST 10
+LDCONST 2
+LOGBASE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LOGBASE` bytecode 
+
+```{r eval=FALSE}
+log(100, 10)
+```
+
+```{r echo=FALSE}
+disq(
+  log(100, 10)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `LT` {#sec-LT}
+
+**Test less than**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |LT    |
+|Value          |53    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `LT` Bytecode Assembly Example 
+
+```{r LT, error=TRUE}
+code <- r"(
+LDCONST 7
+LDCONST 5
+LT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `LT` bytecode 
+
+```{r eval=FALSE}
+x < 5
+```
+
+```{r echo=FALSE}
+disq(
+  x < 5
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MAKECLOSURE` {#sec-MAKECLOSURE}
+
+**Make a closure**
+
+For the purposes of compiling with `{asmr}` this instruction must be terminated with an `ENDMAKECLOSURE` instruction.
+
+`ENDMAKECLOSURE` is not a real instruction, and only exists as a way of instructing the compiler how to behave in the absence of higher-level R syntax to consult.  See [Section -@sec-end-makeclosure] for more details.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |MAKECLOSURE |
+|Value          |41          |
+|Number of Args |1           |
+|Has expr index |FALSE       |
+|Stack Pop      |0           |
+|Stack Push     |1           |
+
+Table: Argument summary
+
+| Argument|Type    |Description                                                |
+|--------:|:-------|:----------------------------------------------------------|
+|        1|closure |Sequence of arguments to closure separated by semi-colons. |
+
+### Example R code producing `MAKECLOSURE` bytecode 
+
+```{r eval=FALSE}
+function(x) {x + 1}
+```
+
+```{r echo=FALSE}
+disq(
+  function(x) {x + 1}
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MAKEPROM` {#sec-MAKEPROM}
+
+**Make a promise**
+
+For the purposes of compiling with `{asmr}` this instruction must be terminated with an `ENDMAKEPROM` instruction. 
+
+`ENDMAKEPROM` is not a real instruction, and only exists as a way of instructing the compiler how to behave in the absence of higher-level R syntax to consult. See [Section -@sec-end-makeprom] for more details.
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |MAKEPROM |
+|Value          |29       |
+|Number of Args |1        |
+|Has expr index |FALSE    |
+|Stack Pop      |0        |
+|Stack Push     |1        |
+
+Table: Argument summary
+
+| Argument|Type    |Description                                                                                                                                            |
+|--------:|:-------|:------------------------------------------------------------------------------------------------------------------------------------------------------|
+|        1|promise |Special handling for promises in `{rbytecode}` means that the argument is automatically inferred from the instructions within `MAKEPROM`/`ENDMAKEPROM` |
+
+### `MAKEPROM` Bytecode Assembly Example 
+
+```{r MAKEPROM, error=TRUE}
+code <- r"(
+GETFUN head
+MAKEPROM
+  GETVAR mtcars
+  RETURN
+ENDMAKEPROM
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `MAKEPROM` bytecode 
+
+```{r eval=FALSE}
+runif(n = 3, min = x)
+```
+
+```{r echo=FALSE}
+disq(
+  runif(n = 3, min = x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MATH1` {#sec-MATH1}
+
+**Perform a mathematical operation.**
+
+Perform one of the built-in mathematical operations.
+
+```{r}
+# List of all operations
+compiler:::math1funs
+```
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |MATH1 |
+|Value          |118   |
+|Number of Args |1     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+Table: Argument summary
+
+| Argument|Type      |Description                                                        |
+|--------:|:---------|:------------------------------------------------------------------|
+|        1|math1name |Name of valued math operation.  See [Section -@sec-math1functions] |
+
+### `MATH1` Bytecode Assembly Example 
+
+```{r MATH1, error=TRUE}
+code <- r"(
+LDCONST 1:5
+MATH1 sin
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `MATH1` bytecode 
+
+```{r eval=FALSE}
+floor(x)
+```
+
+```{r echo=FALSE}
+disq(
+  floor(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MATSUBASSIGN` {#sec-MATSUBASSIGN}
+
+**Assign into matrix with `[`**
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |MATSUBASSIGN |
+|Value          |87           |
+|Number of Args |0            |
+|Has expr index |TRUE         |
+|Stack Pop      |2            |
+|Stack Push     |0            |
+
+### Example R code producing `MATSUBASSIGN` bytecode 
+
+```{r eval=FALSE}
+m[1,2] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[1,2] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MATSUBASSIGN2` {#sec-MATSUBASSIGN2}
+
+**Assign into matrix with `[[`**
+
+Table: Instruction summary
+
+|               |value         |
+|:--------------|:-------------|
+|Name           |MATSUBASSIGN2 |
+|Value          |109           |
+|Number of Args |0             |
+|Has expr index |TRUE          |
+|Stack Pop      |2             |
+|Stack Push     |0             |
+
+### Example R code producing `MATSUBASSIGN2` bytecode 
+
+```{r eval=FALSE}
+m[[1,2]] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[[1,2]] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MATSUBSET` {#sec-MATSUBSET}
+
+**Subset matrix with `[`**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |MATSUBSET |
+|Value          |85        |
+|Number of Args |0         |
+|Has expr index |TRUE      |
+|Stack Pop      |2         |
+|Stack Push     |0         |
+
+### Example R code producing `MATSUBSET` bytecode 
+
+```{r eval=FALSE}
+m[1,2]
+```
+
+```{r echo=FALSE}
+disq(
+  m[1,2]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MATSUBSET2` {#sec-MATSUBSET2}
+
+**Subset matrix with `[[`**
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |MATSUBSET2 |
+|Value          |107        |
+|Number of Args |0          |
+|Has expr index |TRUE       |
+|Stack Pop      |2          |
+|Stack Push     |0          |
+
+### Example R code producing `MATSUBSET2` bytecode 
+
+```{r eval=FALSE}
+m[[1,2]]
+```
+
+```{r echo=FALSE}
+disq(
+  m[[1,2]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `MUL` {#sec-MUL}
+
+**Multiply**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |MUL   |
+|Value          |46    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `MUL` Bytecode Assembly Example 
+
+```{r MUL, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 2
+MUL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `MUL` bytecode 
+
+```{r eval=FALSE}
+x * y
+```
+
+```{r echo=FALSE}
+disq(
+  x * y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `NE` {#sec-NE}
+
+**Test not equal to**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |NE    |
+|Value          |52    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `NE` Bytecode Assembly Example 
+
+```{r NE, error=TRUE}
+code <- r"(
+LDCONST 2
+LDCONST 3
+NE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `NE` bytecode 
+
+```{r eval=FALSE}
+x != 3
+```
+
+```{r echo=FALSE}
+disq(
+  x != 3
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `NOT` {#sec-NOT}
+
+**Logical NOT operation**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |NOT   |
+|Value          |59    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### `NOT` Bytecode Assembly Example 
+
+```{r NOT, error=TRUE}
+code <- r"(
+LDTRUE
+NOT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `NOT` bytecode 
+
+```{r eval=FALSE}
+!x
+```
+
+```{r echo=FALSE}
+disq(
+  !x
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `OR` {#sec-OR}
+
+**Vector logical OR**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |OR    |
+|Value          |58    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `OR` Bytecode Assembly Example 
+
+```{r OR, error=TRUE}
+code <- r"(
+LDCONST c(TRUE, TRUE)
+LDCONST c(TRUE, FALSE)
+OR
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `OR` bytecode 
+
+```{r eval=FALSE}
+x | y
+```
+
+```{r echo=FALSE}
+disq(
+  x | y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `OR1ST` {#sec-OR1ST}
+
+**Scalar logical OR (Part 1)**
+
+Scalar logical OR in R supports "short-circuiting" the operation i.e. if the first argument is TRUE, then the second argument is never evaluated.
+
+The OR1ST instruction pops a value from the stack, and if TRUE jumps to the position specified in its label argument i.e. the position after the end of the trailing `OR2ND` statement.
+
+Following the `OR1ST` instruction is the code for the right-hand side of the OR operation which is concluded with an `OR2ND` statement.
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |OR1ST |
+|Value          |90    |
+|Number of Args |1     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                        |
+|--------:|:-----|:--------------------------------------------------|
+|        1|label |Location to jump to if first logical value is TRUE |
+
+### `OR1ST` Bytecode Assembly Example 
+
+```{r OR1ST, error=TRUE}
+code <- r"(
+LDFALSE
+OR1ST @label1
+LDFALSE
+OR2ND
+@label1
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `OR1ST` bytecode 
+
+```{r eval=FALSE}
+x || y
+```
+
+```{r echo=FALSE}
+disq(
+  x || y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `OR2ND` {#sec-OR2ND}
+
+**Scalar logical OR (Part 2)**
+
+See the `OR1ST` instruction [Section -@sec-OR1ST]
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |OR2ND |
+|Value          |91    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### Example R code producing `OR2ND` bytecode 
+
+```{r eval=FALSE}
+x || y
+```
+
+```{r echo=FALSE}
+disq(
+  x || y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `POP` {#sec-POP}
+
+**Pop a value off the stack (and discard)**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |POP   |
+|Value          |4     |
+|Number of Args |0     |
+|Has expr index |FALSE |
+|Stack Pop      |1     |
+|Stack Push     |0     |
+
+### `POP` Bytecode Assembly Example 
+
+```{r POP, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 2
+POP
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `PRINTVALUE` {#sec-PRINTVALUE}
+
+**Purpose currently unknown.**
+
+Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |PRINTVALUE |
+|Value          |6          |
+|Number of Args |0          |
+|Has expr index |FALSE      |
+|Stack Pop      |?          |
+|Stack Push     |?          |
+
+{{< pagebreak >}}
+
+## `PUSHARG` {#sec-PUSHARG}
+
+**Push an value from the stack into the list of arguments for a call**
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |PUSHARG |
+|Value          |33      |
+|Number of Args |0       |
+|Has expr index |FALSE   |
+|Stack Pop      |1       |
+|Stack Push     |0       |
+
+### `PUSHARG` Bytecode Assembly Example 
+
+```{r PUSHARG, error=TRUE}
+code <- r"(
+LDCONST 1
+SETVAR x
+POP
+GETBUILTIN list
+GETVAR x
+PUSHARG
+CALLBUILTIN
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `PUSHARG` bytecode 
+
+```{r eval=FALSE}
+list(1, x)
+```
+
+```{r echo=FALSE}
+disq(
+  list(1, x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `PUSHCONSTARG` {#sec-PUSHCONSTARG}
+
+**Push a constant value into the list of arguments for a call.**
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |PUSHCONSTARG |
+|Value          |34           |
+|Number of Args |1            |
+|Has expr index |FALSE        |
+|Stack Pop      |1            |
+|Stack Push     |0            |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                                         |
+|--------:|:-----|:-------------------------------------------------------------------|
+|        1|const |Value or expression to add to list of arguments for a function call |
+
+### `PUSHCONSTARG` Bytecode Assembly Example 
+
+```{r PUSHCONSTARG, error=TRUE}
+code <- r"(
+GETFUN runif
+PUSHCONSTARG 3
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `PUSHCONSTARG` bytecode 
+
+```{r eval=FALSE}
+list(1, x)
+```
+
+```{r echo=FALSE}
+disq(
+  list(1, x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `PUSHFALSEARG` {#sec-PUSHFALSEARG}
+
+**Push `FALSE` into the list of arguments for a call**
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |PUSHFALSEARG |
+|Value          |37           |
+|Number of Args |0            |
+|Has expr index |FALSE        |
+|Stack Pop      |0            |
+|Stack Push     |0            |
+
+### `PUSHFALSEARG` Bytecode Assembly Example 
+
+```{r PUSHFALSEARG, error=TRUE}
+code <- r"(
+GETFUN identity
+PUSHFALSEARG
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `PUSHFALSEARG` bytecode 
+
+```{r eval=FALSE}
+f(1, NULL, TRUE, FALSE)
+```
+
+```{r echo=FALSE}
+disq(
+  f(1, NULL, TRUE, FALSE)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `PUSHNULLARG` {#sec-PUSHNULLARG}
+
+**Push `NULL` into the list of arguments for a call**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |PUSHNULLARG |
+|Value          |35          |
+|Number of Args |0           |
+|Has expr index |FALSE       |
+|Stack Pop      |0           |
+|Stack Push     |0           |
+
+### `PUSHNULLARG` Bytecode Assembly Example 
+
+```{r PUSHNULLARG, error=TRUE}
+code <- r"(
+GETFUN identity
+PUSHNULLARG
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `PUSHNULLARG` bytecode 
+
+```{r eval=FALSE}
+f(1, NULL, TRUE, FALSE)
+```
+
+```{r echo=FALSE}
+disq(
+  f(1, NULL, TRUE, FALSE)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `PUSHTRUEARG` {#sec-PUSHTRUEARG}
+
+**Push `TRUE` into the list of arguments for a call.**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |PUSHTRUEARG |
+|Value          |36          |
+|Number of Args |0           |
+|Has expr index |FALSE       |
+|Stack Pop      |0           |
+|Stack Push     |0           |
+
+### `PUSHTRUEARG` Bytecode Assembly Example 
+
+```{r PUSHTRUEARG, error=TRUE}
+code <- r"(
+GETFUN identity
+PUSHTRUEARG
+CALL
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `PUSHTRUEARG` bytecode 
+
+```{r eval=FALSE}
+f(1, NULL, TRUE, FALSE)
+```
+
+```{r echo=FALSE}
+disq(
+  f(1, NULL, TRUE, FALSE)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `RETURN` {#sec-RETURN}
+
+**Return control to the caller**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |RETURN |
+|Value          |1      |
+|Number of Args |0      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |0      |
+
+### `RETURN` Bytecode Assembly Example 
+
+```{r RETURN, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 2 
+ADD
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `RETURN` bytecode 
+
+```{r eval=FALSE}
+a + 1
+```
+
+```{r echo=FALSE}
+disq(
+  a + 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `RETURNJMP` {#sec-RETURNJMP}
+
+**Return control to the caller via a "longjmp"**
+
+It's unclear on exactly when this instruction is generated.
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |RETURNJMP |
+|Value          |103       |
+|Number of Args |0         |
+|Has expr index |FALSE     |
+|Stack Pop      |1         |
+|Stack Push     |0         |
+
+{{< pagebreak >}}
+
+## `SEQALONG` {#sec-SEQALONG}
+
+**Create an integer sequence the same length as that next value on the stack.**
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |SEQALONG |
+|Value          |121      |
+|Number of Args |0        |
+|Has expr index |TRUE     |
+|Stack Pop      |1        |
+|Stack Push     |1        |
+
+### `SEQALONG` Bytecode Assembly Example 
+
+```{r SEQALONG, error=TRUE}
+code <- r"(
+LDCONST c(10, 20, 30)
+SEQALONG
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SEQALONG` bytecode 
+
+```{r eval=FALSE}
+seq_along(c(x, y, z))
+```
+
+```{r echo=FALSE}
+disq(
+  seq_along(c(x, y, z))
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SEQLEN` {#sec-SEQLEN}
+
+**Create an integer sequence of the given length**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |SEQLEN |
+|Value          |122    |
+|Number of Args |0      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+### `SEQLEN` Bytecode Assembly Example 
+
+```{r SEQLEN, error=TRUE}
+code <- r"(
+LDCONST 5
+SEQLEN
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SEQLEN` bytecode 
+
+```{r eval=FALSE}
+seq_len(x)
+```
+
+```{r echo=FALSE}
+disq(
+  seq_len(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SETLOOPVAL` {#sec-SETLOOPVAL}
+
+**Purpose currently unknown.**
+
+Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |SETLOOPVAL |
+|Value          |14         |
+|Number of Args |0          |
+|Has expr index |FALSE      |
+|Stack Pop      |?          |
+|Stack Push     |?          |
+
+{{< pagebreak >}}
+
+## `SETTAG` {#sec-SETTAG}
+
+**Set the name of an argument to a function**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |SETTAG |
+|Value          |31     |
+|Number of Args |1      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type |Description                                              |
+|--------:|:----|:--------------------------------------------------------|
+|        1|name |Name to set for most recent argument for a function call |
+
+### `SETTAG` Bytecode Assembly Example 
+
+```{r SETTAG, error=TRUE}
+code <- r"(
+  GETBUILTIN max
+  PUSHCONSTARG NA
+  PUSHTRUEARG
+  SETTAG na.rm
+  CALLBUILTIN
+  RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SETTAG` bytecode 
+
+```{r eval=FALSE}
+c(a = 1)
+```
+
+```{r echo=FALSE}
+disq(
+  c(a = 1)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SETTER_CALL` {#sec-SETTER_CALL}
+
+**Assignment via a `<-` method**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |SETTER_CALL |
+|Value          |98          |
+|Number of Args |1           |
+|Has expr index |TRUE        |
+|Stack Pop      |1           |
+|Stack Push     |1           |
+
+Table: Argument summary
+
+| Argument|Type  |Description |
+|--------:|:-----|:-----------|
+|        1|const |Unknown     |
+
+### Example R code producing `SETTER_CALL` bytecode 
+
+```{r eval=FALSE}
+names(x) <- 'hello'
+```
+
+```{r echo=FALSE}
+disq(
+  names(x) <- 'hello'
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SETVAR` {#sec-SETVAR}
+
+**Set the value of a variable**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |SETVAR |
+|Value          |22     |
+|Number of Args |1      |
+|Has expr index |FALSE  |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of variable |
+
+### `SETVAR` Bytecode Assembly Example 
+
+```{r SETVAR, error=TRUE}
+code <- r"(
+LDCONST 1
+SETVAR y
+GETVAR y
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SETVAR` bytecode 
+
+```{r eval=FALSE}
+x <- y
+```
+
+```{r echo=FALSE}
+disq(
+  x <- y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SETVAR2` {#sec-SETVAR2}
+
+**Use superassignment to set the value of a variable**
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |SETVAR2 |
+|Value          |95      |
+|Number of Args |1       |
+|Has expr index |FALSE   |
+|Stack Pop      |1       |
+|Stack Push     |1       |
+
+Table: Argument summary
+
+| Argument|Type |Description      |
+|--------:|:----|:----------------|
+|        1|name |Name of variable |
+
+### Example R code producing `SETVAR2` bytecode 
+
+```{r eval=FALSE}
+x <<- y
+```
+
+```{r echo=FALSE}
+disq(
+  x <<- y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SQRT` {#sec-SQRT}
+
+**Square root **
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |SQRT  |
+|Value          |49    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### `SQRT` Bytecode Assembly Example 
+
+```{r SQRT, error=TRUE}
+code <- r"(
+LDCONST 2
+SQRT
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SQRT` bytecode 
+
+```{r eval=FALSE}
+sqrt(x)
+```
+
+```{r echo=FALSE}
+disq(
+  sqrt(x)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTASSIGN` {#sec-STARTASSIGN}
+
+**Start an assignment operation. **
+
+This instruction be paired with closing `ENDASSIGN` instruction.
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |STARTASSIGN |
+|Value          |61          |
+|Number of Args |1           |
+|Has expr index |FALSE       |
+|Stack Pop      |0           |
+|Stack Push     |0           |
+
+Table: Argument summary
+
+| Argument|Type |Description                                         |
+|--------:|:----|:---------------------------------------------------|
+|        1|name |Name of variable into which value is being assigned |
+
+### Example R code producing `STARTASSIGN` bytecode 
+
+```{r eval=FALSE}
+a[1] <- 2
+```
+
+```{r echo=FALSE}
+disq(
+  a[1] <- 2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTASSIGN2` {#sec-STARTASSIGN2}
+
+**Start an assignment operation. **
+
+This instruction be paired with closing `ENDASSIGN2` instruction.
+
+Help needed: R code example which uses this instruction
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |STARTASSIGN2 |
+|Value          |96           |
+|Number of Args |1            |
+|Has expr index |FALSE        |
+|Stack Pop      |0            |
+|Stack Push     |0            |
+
+Table: Argument summary
+
+| Argument|Type |Description                                         |
+|--------:|:----|:---------------------------------------------------|
+|        1|name |Name of variable into which value is being assigned |
+
+{{< pagebreak >}}
+
+## `STARTC` {#sec-STARTC}
+
+**Deprecated instruction**
+
+This is a vestigal instruction that used to be paired with an ending `DFLTC` to peform the equivalent of `c(...)`.
+
+Now that `c()` is a builtin function, use `GETBUILTIN` and `CALLBUILTIN` instead.
+
+See also R source `main/eval.c` where comments indicate this OP is no longer used.
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |STARTC |
+|Value          |67     |
+|Number of Args |1      |
+|Has expr index |TRUE   |
+|Stack Pop      |NA     |
+|Stack Push     |NA     |
+
+Table: Argument summary
+
+| Argument|Type  |Description |
+|--------:|:-----|:-----------|
+|        1|label |Deprecated  |
+
+{{< pagebreak >}}
+
+## `STARTFOR` {#sec-STARTFOR}
+
+**Initiate a `for` loop**
+
+See also [STEPFOR  Section -@sec-STEPFOR] and [ENDFOR Section -@sec-ENDFOR].
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |STARTFOR |
+|Value          |11       |
+|Number of Args |2        |
+|Has expr index |TRUE     |
+|Stack Pop      |0        |
+|Stack Push     |0        |
+
+Table: Argument summary
+
+| Argument|Type  |Description                                |
+|--------:|:-----|:------------------------------------------|
+|        1|name  |Name of loop variable                      |
+|        2|label |Location of matching `STEPFOR` instruction |
+
+### Example R code producing `STARTFOR` bytecode 
+
+```{r eval=FALSE}
+for(i in 1:3) {print(i)}
+```
+
+```{r echo=FALSE}
+disq(
+  for(i in 1:3) {print(i)}
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTLOOPCNTXT` {#sec-STARTLOOPCNTXT}
+
+**Start loop context**
+
+When complex things happen inside a `repeat`, `while()` or `for()` loop, it can no longer use simple `BRIFNOT` and `GOTO`.   And `eval()` inside a loop is one such occasion. 
+
+See also `ENDLOOPCNTXT` ([Section -@sec-ENDLOOPCNTXT])
+
+Table: Instruction summary
+
+|               |value          |
+|:--------------|:--------------|
+|Name           |STARTLOOPCNTXT |
+|Value          |7              |
+|Number of Args |1              |
+|Has expr index |TRUE           |
+|Stack Pop      |0              |
+|Stack Push     |0              |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTLOOPCNTXT` bytecode 
+
+```{r eval=FALSE}
+repeat {
+  eval("hello")
+  break
+}
+```
+
+```{r echo=FALSE}
+disq(
+  repeat {
+  eval("hello")
+  break
+}
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBASSIGN` {#sec-STARTSUBASSIGN}
+
+**An assignment operation into vector via an empty index**
+
+Help needed: Details of when this is used
+
+Table: Instruction summary
+
+|               |value          |
+|:--------------|:--------------|
+|Name           |STARTSUBASSIGN |
+|Value          |65             |
+|Number of Args |1              |
+|Has expr index |TRUE           |
+|Stack Pop      |0              |
+|Stack Push     |0              |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBASSIGN` bytecode 
+
+```{r eval=FALSE}
+a[] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  a[] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBASSIGN_N` {#sec-STARTSUBASSIGN_N}
+
+**Start an assignment operation into a vector. **
+
+This instruction must be paired with a closing `VECSUBASSIGN` instruction.
+
+Table: Instruction summary
+
+|               |value            |
+|:--------------|:----------------|
+|Name           |STARTSUBASSIGN_N |
+|Value          |105              |
+|Number of Args |1                |
+|Has expr index |TRUE             |
+|Stack Pop      |0                |
+|Stack Push     |0                |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBASSIGN_N` bytecode 
+
+```{r eval=FALSE}
+a[1] <- 2
+```
+
+```{r echo=FALSE}
+disq(
+  a[1] <- 2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBASSIGN2` {#sec-STARTSUBASSIGN2}
+
+**Start an assignment operation**
+
+Table: Instruction summary
+
+|               |value           |
+|:--------------|:---------------|
+|Name           |STARTSUBASSIGN2 |
+|Value          |71              |
+|Number of Args |1               |
+|Has expr index |TRUE            |
+|Stack Pop      |0               |
+|Stack Push     |0               |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBASSIGN2` bytecode 
+
+```{r eval=FALSE}
+m[[,,]] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[[,,]] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBASSIGN2_N` {#sec-STARTSUBASSIGN2_N}
+
+**Start an assignment operation into a vector. **
+
+This instruction must be paired with a closing `SUBASSIGN2_N` instruction.
+
+Table: Instruction summary
+
+|               |value             |
+|:--------------|:-----------------|
+|Name           |STARTSUBASSIGN2_N |
+|Value          |111               |
+|Number of Args |1                 |
+|Has expr index |TRUE              |
+|Stack Pop      |0                 |
+|Stack Push     |0                 |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBASSIGN2_N` bytecode 
+
+```{r eval=FALSE}
+m[[1,2,3]] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[[1,2,3]] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBSET` {#sec-STARTSUBSET}
+
+**Start vector subset with `[]`**
+
+Help needed: R code example which uses this instruction
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |STARTSUBSET |
+|Value          |63          |
+|Number of Args |1           |
+|Has expr index |TRUE        |
+|Stack Pop      |0           |
+|Stack Push     |0           |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBSET` bytecode 
+
+```{r eval=FALSE}
+a[]
+```
+
+```{r echo=FALSE}
+disq(
+  a[]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBSET_N` {#sec-STARTSUBSET_N}
+
+**Start vector subset**
+
+x[y] - label points to after matching VECSUBSET
+
+Table: Instruction summary
+
+|               |value         |
+|:--------------|:-------------|
+|Name           |STARTSUBSET_N |
+|Value          |104           |
+|Number of Args |1             |
+|Has expr index |TRUE          |
+|Stack Pop      |0             |
+|Stack Push     |0             |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBSET_N` bytecode 
+
+```{r eval=FALSE}
+a[1]
+```
+
+```{r echo=FALSE}
+disq(
+  a[1]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBSET2` {#sec-STARTSUBSET2}
+
+**Array subset**
+
+This appears to be a vector subset instruction.
+
+Help needed: R code example which uses this instruction
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |STARTSUBSET2 |
+|Value          |69           |
+|Number of Args |1            |
+|Has expr index |TRUE         |
+|Stack Pop      |0            |
+|Stack Push     |0            |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBSET2` bytecode 
+
+```{r eval=FALSE}
+m[[,,]]
+```
+
+```{r echo=FALSE}
+disq(
+  m[[,,]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STARTSUBSET2_N` {#sec-STARTSUBSET2_N}
+
+**Start vector subset with `[[]]`**
+
+x[[y]] - label points to after matching VECSUBSET
+
+Table: Instruction summary
+
+|               |value          |
+|:--------------|:--------------|
+|Name           |STARTSUBSET2_N |
+|Value          |110            |
+|Number of Args |1              |
+|Has expr index |TRUE           |
+|Stack Pop      |0              |
+|Stack Push     |0              |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `STARTSUBSET2_N` bytecode 
+
+```{r eval=FALSE}
+a[[1]]
+```
+
+```{r echo=FALSE}
+disq(
+  a[[1]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `STEPFOR` {#sec-STEPFOR}
+
+**Advance to the next element in a `for` loop**
+
+See also [ENDFOR  Section -@sec-ENDFOR] and [STARTFOR Section -@sec-STARTFOR].
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |STEPFOR |
+|Value          |12      |
+|Number of Args |1       |
+|Has expr index |FALSE   |
+|Stack Pop      |0       |
+|Stack Push     |0       |
+
+Table: Argument summary
+
+| Argument|Type  |Description                     |
+|--------:|:-----|:-------------------------------|
+|        1|label |Location of matching `STARTFOR` |
+
+### Example R code producing `STEPFOR` bytecode 
+
+```{r eval=FALSE}
+for(i in 1:3) {print(i)}
+```
+
+```{r echo=FALSE}
+disq(
+  for(i in 1:3) {print(i)}
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SUB` {#sec-SUB}
+
+**Subtraction**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |SUB   |
+|Value          |45    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |2     |
+|Stack Push     |1     |
+
+### `SUB` Bytecode Assembly Example 
+
+```{r SUB, error=TRUE}
+code <- r"(
+LDCONST 1
+LDCONST 2
+SUB
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `SUB` bytecode 
+
+```{r eval=FALSE}
+x - y
+```
+
+```{r echo=FALSE}
+disq(
+  x - y
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SUBASSIGN_N` {#sec-SUBASSIGN_N}
+
+**Assignment into a subset of an object**
+
+Table: Instruction summary
+
+|               |value       |
+|:--------------|:-----------|
+|Name           |SUBASSIGN_N |
+|Value          |114         |
+|Number of Args |1           |
+|Has expr index |TRUE        |
+|Stack Pop      |?           |
+|Stack Push     |?           |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `SUBASSIGN_N` bytecode 
+
+```{r eval=FALSE}
+m[1,2,3] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[1,2,3] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SUBASSIGN2_N` {#sec-SUBASSIGN2_N}
+
+**Assignment into a subset of an object**
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |SUBASSIGN2_N |
+|Value          |115          |
+|Number of Args |1            |
+|Has expr index |TRUE         |
+|Stack Pop      |?            |
+|Stack Push     |?            |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `SUBASSIGN2_N` bytecode 
+
+```{r eval=FALSE}
+m[[1, 2, 3]] <- 1
+```
+
+```{r echo=FALSE}
+disq(
+  m[[1, 2, 3]] <- 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SUBSET_N` {#sec-SUBSET_N}
+
+**Subset of an object**
+
+Table: Instruction summary
+
+|               |value    |
+|:--------------|:--------|
+|Name           |SUBSET_N |
+|Value          |112      |
+|Number of Args |1        |
+|Has expr index |TRUE     |
+|Stack Pop      |?        |
+|Stack Push     |?        |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `SUBSET_N` bytecode 
+
+```{r eval=FALSE}
+m[1,2,3]
+```
+
+```{r echo=FALSE}
+disq(
+  m[1,2,3]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SUBSET2_N` {#sec-SUBSET2_N}
+
+**Subset of an object**
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |SUBSET2_N |
+|Value          |113       |
+|Number of Args |1         |
+|Has expr index |TRUE      |
+|Stack Pop      |?         |
+|Stack Push     |?         |
+
+Table: Argument summary
+
+| Argument|Type  |Description                             |
+|--------:|:-----|:---------------------------------------|
+|        1|label |Location of matching `END*` instruction |
+
+### Example R code producing `SUBSET2_N` bytecode 
+
+```{r eval=FALSE}
+m[[1,2,3]]
+```
+
+```{r echo=FALSE}
+disq(
+  m[[1,2,3]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `SWAP` {#sec-SWAP}
+
+**Swap the top two items on the stack**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |SWAP  |
+|Value          |100   |
+|Number of Args |0     |
+|Has expr index |FALSE |
+|Stack Pop      |2     |
+|Stack Push     |2     |
+
+### `SWAP` Bytecode Assembly Example 
+
+```{r SWAP, error=TRUE}
+code <- r"(
+LDCONST "apple"
+LDCONST "banana"
+SWAP
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+{{< pagebreak >}}
+
+## `SWITCH` {#sec-SWITCH}
+
+**Equivalent to `switch()` statement**
+
+The switch instruction is quite convoluted due to the way the `switch()` statement in R handles both numeric and character arguments.
+
+For the SWITCH instruction, four arguments are needed:
+
+1. *expridx*
+2. A character vector of labels for the choices. This may be `NULL`
+3. A vector of labels matching the character vector. This may be `NULL`
+4. A vector of labels matching the locations to jump to if numeric argument is given as first argument to `switch()`
+
+### Note
+
+There is not yet support for compiling this op in the `{asmr}` package.
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |SWITCH |
+|Value          |102    |
+|Number of Args |3      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+Table: Argument summary
+
+| Argument|Type     |Description                                                                                           |
+|--------:|:--------|:-----------------------------------------------------------------------------------------------------|
+|        1|char_vec |A character vector of labels for the choices. This may be NULL                                        |
+|        2|labels   |A vector of locations matching the character vector. This may be NULL                                 |
+|        3|labels   |A vector of labels  matching the locations to jump to if numeric argument is given as switching value |
+
+### Example R code producing `SWITCH` bytecode 
+
+```{r eval=FALSE}
+switch(x, 10, 20)
+```
+
+```{r echo=FALSE}
+disq(
+  switch(x, 10, 20)
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `UMINUS` {#sec-UMINUS}
+
+**Unary minus**
+
+Table: Instruction summary
+
+|               |value  |
+|:--------------|:------|
+|Name           |UMINUS |
+|Value          |42     |
+|Number of Args |0      |
+|Has expr index |TRUE   |
+|Stack Pop      |1      |
+|Stack Push     |1      |
+
+### `UMINUS` Bytecode Assembly Example 
+
+```{r UMINUS, error=TRUE}
+code <- r"(
+LDCONST 1
+UMINUS
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `UMINUS` bytecode 
+
+```{r eval=FALSE}
+-x + 1
+```
+
+```{r echo=FALSE}
+disq(
+  -x + 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `UPLUS` {#sec-UPLUS}
+
+**Unary plus**
+
+Table: Instruction summary
+
+|               |value |
+|:--------------|:-----|
+|Name           |UPLUS |
+|Value          |43    |
+|Number of Args |0     |
+|Has expr index |TRUE  |
+|Stack Pop      |1     |
+|Stack Push     |1     |
+
+### `UPLUS` Bytecode Assembly Example 
+
+```{r UPLUS, error=TRUE}
+code <- r"(
+LDCONST 1
+UPLUS
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+### Example R code producing `UPLUS` bytecode 
+
+```{r eval=FALSE}
++x + 1
+```
+
+```{r echo=FALSE}
+disq(
+  +x + 1
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `VECSUBASSIGN` {#sec-VECSUBASSIGN}
+
+**End an assignment operation into the subset of a vector**
+
+Assignment must have been started with `STARTSUBASSIGN_N` instruction.
+
+Table: Instruction summary
+
+|               |value        |
+|:--------------|:------------|
+|Name           |VECSUBASSIGN |
+|Value          |86           |
+|Number of Args |0            |
+|Has expr index |TRUE         |
+|Stack Pop      |1            |
+|Stack Push     |0            |
+
+### Example R code producing `VECSUBASSIGN` bytecode 
+
+```{r eval=FALSE}
+a[1] <- 2
+```
+
+```{r echo=FALSE}
+disq(
+  a[1] <- 2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `VECSUBASSIGN2` {#sec-VECSUBASSIGN2}
+
+**End an assignment operation into the subset of a vector**
+
+Assignment must have been started with `STARTSUBASSIGN2_N` instruction.
+
+Table: Instruction summary
+
+|               |value         |
+|:--------------|:-------------|
+|Name           |VECSUBASSIGN2 |
+|Value          |108           |
+|Number of Args |0             |
+|Has expr index |TRUE          |
+|Stack Pop      |1             |
+|Stack Push     |0             |
+
+### Example R code producing `VECSUBASSIGN2` bytecode 
+
+```{r eval=FALSE}
+a[[1]] <- 2
+```
+
+```{r echo=FALSE}
+disq(
+  a[[1]] <- 2
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `VECSUBSET` {#sec-VECSUBSET}
+
+**Vector subset with `[]`**
+
+This instruction marks the end of a set of instructions which start with `STARTSUBSET_N`
+
+Table: Instruction summary
+
+|               |value     |
+|:--------------|:---------|
+|Name           |VECSUBSET |
+|Value          |84        |
+|Number of Args |0         |
+|Has expr index |TRUE      |
+|Stack Pop      |1         |
+|Stack Push     |0         |
+
+### Example R code producing `VECSUBSET` bytecode 
+
+```{r eval=FALSE}
+a[1]
+```
+
+```{r echo=FALSE}
+disq(
+  a[1]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `VECSUBSET2` {#sec-VECSUBSET2}
+
+**Vector subset with `[[]]`**
+
+This instruction marks the end of a set of instructions which start with `STARTSUBSET2_N`
+
+Table: Instruction summary
+
+|               |value      |
+|:--------------|:----------|
+|Name           |VECSUBSET2 |
+|Value          |106        |
+|Number of Args |0          |
+|Has expr index |TRUE       |
+|Stack Pop      |1          |
+|Stack Push     |0          |
+
+### Example R code producing `VECSUBSET2` bytecode 
+
+```{r eval=FALSE}
+a[[1]]
+```
+
+```{r echo=FALSE}
+disq(
+  a[[1]]
+) |> as.character()
+```
+
+{{< pagebreak >}}
+
+## `VISIBLE` {#sec-VISIBLE}
+
+**Make an `invisible` object `visible` again.**
+
+There is no direct analogue of this op in R.
+
+Table: Instruction summary
+
+|               |value   |
+|:--------------|:-------|
+|Name           |VISIBLE |
+|Value          |94      |
+|Number of Args |0       |
+|Has expr index |FALSE   |
+|Stack Pop      |1       |
+|Stack Push     |1       |
+
+### `VISIBLE` Bytecode Assembly Example 
+
+```{r VISIBLE, error=TRUE}
+code <- r"(
+LDCONST 1
+INVISIBLE
+VISIBLE
+RETURN
+)"
+
+asm(code) |> eval()
+```
+

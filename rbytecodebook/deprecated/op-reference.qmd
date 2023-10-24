@@ -1,0 +1,57 @@
+# OP Reference
+
+
+```{r setup, include=FALSE}
+library(rbytecode)
+```
+
+## `ADD` {#sec-ADD}
+
+OpCode = 44
+
+### Bytecode Assembly Example
+
+```{r}
+bc <- asm(r"(
+  LDCONST 1
+  LDCONST 2
+  ADD
+  RETURN
+)")
+
+eval(bc)
+```
+
+
+###  Equivalent R code
+
+```{r}
+1 + 2
+```
+
+### Ops 
+
+[`AND` -@sec-AND6 ]
+
+
+
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# AND
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+## `AND` {#sec-AND}
+
+OpCode = 57
+
+
+```{r}
+bc <- asm(r"(
+  LDCONST c(TRUE, FALSE)
+  LDCONST c(TRUE, TRUE)
+  AND
+  RETURN
+)")
+
+eval(bc)
+```
+

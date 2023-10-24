@@ -1,0 +1,134 @@
+# Appendix: Instruction Index {#sec-op-index}
+
+|Name              |Desc                                                                                        |Section                   |
+|:-----------------|:-------------------------------------------------------------------------------------------|:-------------------------|
+|ADD               |Add values                                                                                  |[-@sec-ADD]               |
+|AND               |Vector logical AND                                                                          |[-@sec-AND]               |
+|AND1ST            |Scalar logical AND (Part 1)                                                                 |[-@sec-AND1ST]            |
+|AND2ND            |Scalar logical AND (Part 2)                                                                 |[-@sec-AND2ND]            |
+|BASEGUARD         |Guard execution of base R functions                                                         |[-@sec-BASEGUARD]         |
+|BCMISMATCH        |Raise error to indicate bytecode version mismatch                                           |[-@sec-BCMISMATCH]        |
+|BRIFNOT           |Branch if not TRUE                                                                          |[-@sec-BRIFNOT]           |
+|CALL              |Call function specified by GETFUN                                                           |[-@sec-CALL]              |
+|CALLBUILTIN       |Call a builtin function                                                                     |[-@sec-CALLBUILTIN]       |
+|CALLSPECIAL       |Call a special function                                                                     |[-@sec-CALLSPECIAL]       |
+|CHECKFUN          |Check a function call is valid                                                              |[-@sec-CHECKFUN]          |
+|COLON             |Colon operator e.g. 1:5                                                                     |[-@sec-COLON]             |
+|DDVAL             |Get a double-dot value                                                                      |[-@sec-DDVAL]             |
+|DDVAL_MISSOK      |Get a double-dot value. OK if it is missing                                                 |[-@sec-DDVAL_MISSOK]      |
+|DECLNK            |Decrease link count on next stack item                                                      |[-@sec-DECLNK]            |
+|DECLNKSTK         |Decrease link count on the stack istelf after not-top-level complex assignment              |[-@sec-DECLNKSTK]         |
+|DECLNK_N          |Decrease link count on N stack items                                                        |[-@sec-DECLNK_N]          |
+|DFLTC             |Deprecated instruction                                                                      |[-@sec-DFLTC]             |
+|DFLTSUBASSIGN     |Default subassignment with `[]`                                                             |[-@sec-DFLTSUBASSIGN]     |
+|DFLTSUBASSIGN2    |Default subassignment with `[[]]`                                                           |[-@sec-DFLTSUBASSIGN2]    |
+|DFLTSUBSET        |Default subset with `[]`                                                                    |[-@sec-DFLTSUBSET]        |
+|DFLTSUBSET2       |Default subset with `[[]]`                                                                  |[-@sec-DFLTSUBSET2]       |
+|DIV               |Division                                                                                    |[-@sec-DIV]               |
+|DODOTS            |Process `...`                                                                               |[-@sec-DODOTS]            |
+|DOLLAR            |`$`operator when used to fetch a value                                                      |[-@sec-DOLLAR]            |
+|DOLLARGETS        |`$` operator when used to set a value                                                       |[-@sec-DOLLARGETS]        |
+|DOLOOPBREAK       |Purpose currently unknown.                                                                  |[-@sec-DOLOOPBREAK]       |
+|DOLOOPNEXT        |Purpose currently unknown.                                                                  |[-@sec-DOLOOPNEXT]        |
+|DOMISSING         |Handle missing arguments                                                                    |[-@sec-DOMISSING]         |
+|DOTCALL           |Call a C function                                                                           |[-@sec-DOTCALL]           |
+|DOTSERR           |Trigger error when `...` used out of context                                                |[-@sec-DOTSERR]           |
+|DUP               |Duplicate the top value in the stack to make it the first two values in the stack.          |[-@sec-DUP]               |
+|DUP2ND            |Duplicate the second value in the stack to push it onto the stack (so it is the first item) |[-@sec-DUP2ND]            |
+|ENDASSIGN         |Mark the end of an assignment operation started with `STARTASSIGN`                          |[-@sec-ENDASSIGN]         |
+|ENDASSIGN2        |Mark the end of an assignment operation started with `STARTASSIGN2`                         |[-@sec-ENDASSIGN2]        |
+|ENDFOR            |Signify end of `for` loop.                                                                  |[-@sec-ENDFOR]            |
+|ENDLOOPCNTXT      |End loop context                                                                            |[-@sec-ENDLOOPCNTXT]      |
+|EQ                |Test equality                                                                               |[-@sec-EQ]                |
+|EXP               |Exponential                                                                                 |[-@sec-EXP]               |
+|EXPT              |Exponent.                                                                                   |[-@sec-EXPT]              |
+|GE                |Test greater than or equal to                                                               |[-@sec-GE]                |
+|GETBUILTIN        |Get a built-in function                                                                     |[-@sec-GETBUILTIN]        |
+|GETFUN            |Get a named function                                                                        |[-@sec-GETFUN]            |
+|GETGLOBFUN        |Get a named function from the global environment (Unconfirmed)                              |[-@sec-GETGLOBFUN]        |
+|GETINTLBUILTIN    |Get an internal function                                                                    |[-@sec-GETINTLBUILTIN]    |
+|GETSYMFUN         |Get a function by its symbol (Unconfirmed)                                                  |[-@sec-GETSYMFUN]         |
+|GETTER_CALL       |Used in complex assignment expressions                                                      |[-@sec-GETTER_CALL]       |
+|GETVAR            |Get a named variable                                                                        |[-@sec-GETVAR]            |
+|GETVAR_MISSOK     |Get a named variable. Missing values allowed.                                               |[-@sec-GETVAR_MISSOK]     |
+|GOTO              |Jump to the labelled location                                                               |[-@sec-GOTO]              |
+|GT                |Test greater than                                                                           |[-@sec-GT]                |
+|INCLNK            |Protect evaluated arguments on the stack.                                                   |[-@sec-INCLNK]            |
+|INCLNKSTK         |Protect evaluated arguments on the stack.                                                   |[-@sec-INCLNKSTK]         |
+|INVISIBLE         |Mark a value as invisible.                                                                  |[-@sec-INVISIBLE]         |
+|ISCHARACTER       |Test is character                                                                           |[-@sec-ISCHARACTER]       |
+|ISCOMPLEX         |Test is complex                                                                             |[-@sec-ISCOMPLEX]         |
+|ISDOUBLE          |Test is double                                                                              |[-@sec-ISDOUBLE]          |
+|ISINTEGER         |Test is integer                                                                             |[-@sec-ISINTEGER]         |
+|ISLOGICAL         |Test is logical                                                                             |[-@sec-ISLOGICAL]         |
+|ISNULL            |Test is NULL                                                                                |[-@sec-ISNULL]            |
+|ISNUMERIC         |Test is numeric                                                                             |[-@sec-ISNUMERIC]         |
+|ISOBJECT          |Test is object                                                                              |[-@sec-ISOBJECT]          |
+|ISSYMBOL          |Test is symbol                                                                              |[-@sec-ISSYMBOL]          |
+|LDCONST           |Load a constant onto the stack                                                              |[-@sec-LDCONST]           |
+|LDFALSE           |Load FALSE onto the stack                                                                   |[-@sec-LDFALSE]           |
+|LDNULL            |Load NULL onto the stack                                                                    |[-@sec-LDNULL]            |
+|LDTRUE            |Load TRUE onto the stack                                                                    |[-@sec-LDTRUE]            |
+|LE                |Test less than or equal to                                                                  |[-@sec-LE]                |
+|LOG               |Log (base e)                                                                                |[-@sec-LOG]               |
+|LOGBASE           |Log                                                                                         |[-@sec-LOGBASE]           |
+|LT                |Test less than                                                                              |[-@sec-LT]                |
+|MAKECLOSURE       |Make a closure                                                                              |[-@sec-MAKECLOSURE]       |
+|MAKEPROM          |Make a promise                                                                              |[-@sec-MAKEPROM]          |
+|MATH1             |Perform a mathematical operation.                                                           |[-@sec-MATH1]             |
+|MATSUBASSIGN      |Assign into matrix with `[`                                                                 |[-@sec-MATSUBASSIGN]      |
+|MATSUBASSIGN2     |Assign into matrix with `[[`                                                                |[-@sec-MATSUBASSIGN2]     |
+|MATSUBSET         |Subset matrix with `[`                                                                      |[-@sec-MATSUBSET]         |
+|MATSUBSET2        |Subset matrix with `[[`                                                                     |[-@sec-MATSUBSET2]        |
+|MUL               |Multiply                                                                                    |[-@sec-MUL]               |
+|NE                |Test not equal to                                                                           |[-@sec-NE]                |
+|NOT               |Logical NOT operation                                                                       |[-@sec-NOT]               |
+|OR                |Vector logical OR                                                                           |[-@sec-OR]                |
+|OR1ST             |Scalar logical OR (Part 1)                                                                  |[-@sec-OR1ST]             |
+|OR2ND             |Scalar logical OR (Part 2)                                                                  |[-@sec-OR2ND]             |
+|POP               |Pop a value off the stack (and discard)                                                     |[-@sec-POP]               |
+|PRINTVALUE        |Purpose currently unknown.                                                                  |[-@sec-PRINTVALUE]        |
+|PUSHARG           |Push an value from the stack into the list of arguments for a call                          |[-@sec-PUSHARG]           |
+|PUSHCONSTARG      |Push a constant value into the list of arguments for a call.                                |[-@sec-PUSHCONSTARG]      |
+|PUSHFALSEARG      |Push `FALSE` into the list of arguments for a call                                          |[-@sec-PUSHFALSEARG]      |
+|PUSHNULLARG       |Push `NULL` into the list of arguments for a call                                           |[-@sec-PUSHNULLARG]       |
+|PUSHTRUEARG       |Push `TRUE` into the list of arguments for a call.                                          |[-@sec-PUSHTRUEARG]       |
+|RETURN            |Return control to the caller                                                                |[-@sec-RETURN]            |
+|RETURNJMP         |Return control to the caller via a "longjmp"                                                |[-@sec-RETURNJMP]         |
+|SEQALONG          |Create an integer sequence the same length as that next value on the stack.                 |[-@sec-SEQALONG]          |
+|SEQLEN            |Create an integer sequence of the given length                                              |[-@sec-SEQLEN]            |
+|SETLOOPVAL        |Purpose currently unknown.                                                                  |[-@sec-SETLOOPVAL]        |
+|SETTAG            |Set the name of an argument to a function                                                   |[-@sec-SETTAG]            |
+|SETTER_CALL       |Assignment via a `<-` method                                                                |[-@sec-SETTER_CALL]       |
+|SETVAR            |Set the value of a variable                                                                 |[-@sec-SETVAR]            |
+|SETVAR2           |Use superassignment to set the value of a variable                                          |[-@sec-SETVAR2]           |
+|SQRT              |Square root                                                                                 |[-@sec-SQRT]              |
+|STARTASSIGN       |Start an assignment operation.                                                              |[-@sec-STARTASSIGN]       |
+|STARTASSIGN2      |Start an assignment operation.                                                              |[-@sec-STARTASSIGN2]      |
+|STARTC            |Deprecated instruction                                                                      |[-@sec-STARTC]            |
+|STARTFOR          |Initiate a `for` loop                                                                       |[-@sec-STARTFOR]          |
+|STARTLOOPCNTXT    |Start loop context                                                                          |[-@sec-STARTLOOPCNTXT]    |
+|STARTSUBASSIGN    |An assignment operation into vector via an empty index                                      |[-@sec-STARTSUBASSIGN]    |
+|STARTSUBASSIGN2   |Start an assignment operation                                                               |[-@sec-STARTSUBASSIGN2]   |
+|STARTSUBASSIGN2_N |Start an assignment operation into a vector.                                                |[-@sec-STARTSUBASSIGN2_N] |
+|STARTSUBASSIGN_N  |Start an assignment operation into a vector.                                                |[-@sec-STARTSUBASSIGN_N]  |
+|STARTSUBSET       |Start vector subset with `[]`                                                               |[-@sec-STARTSUBSET]       |
+|STARTSUBSET2      |Array subset                                                                                |[-@sec-STARTSUBSET2]      |
+|STARTSUBSET2_N    |Start vector subset with `[[]]`                                                             |[-@sec-STARTSUBSET2_N]    |
+|STARTSUBSET_N     |Start vector subset                                                                         |[-@sec-STARTSUBSET_N]     |
+|STEPFOR           |Advance to the next element in a `for` loop                                                 |[-@sec-STEPFOR]           |
+|SUB               |Subtraction                                                                                 |[-@sec-SUB]               |
+|SUBASSIGN2_N      |Assignment into a subset of an object                                                       |[-@sec-SUBASSIGN2_N]      |
+|SUBASSIGN_N       |Assignment into a subset of an object                                                       |[-@sec-SUBASSIGN_N]       |
+|SUBSET2_N         |Subset of an object                                                                         |[-@sec-SUBSET2_N]         |
+|SUBSET_N          |Subset of an object                                                                         |[-@sec-SUBSET_N]          |
+|SWAP              |Swap the top two items on the stack                                                         |[-@sec-SWAP]              |
+|SWITCH            |Equivalent to `switch()` statement                                                          |[-@sec-SWITCH]            |
+|UMINUS            |Unary minus                                                                                 |[-@sec-UMINUS]            |
+|UPLUS             |Unary plus                                                                                  |[-@sec-UPLUS]             |
+|VECSUBASSIGN      |End an assignment operation into the subset of a vector                                     |[-@sec-VECSUBASSIGN]      |
+|VECSUBASSIGN2     |End an assignment operation into the subset of a vector                                     |[-@sec-VECSUBASSIGN2]     |
+|VECSUBSET         |Vector subset with `[]`                                                                     |[-@sec-VECSUBSET]         |
+|VECSUBSET2        |Vector subset with `[[]]`                                                                   |[-@sec-VECSUBSET2]        |
+|VISIBLE           |Make an `invisible` object `visible` again.                                                 |[-@sec-VISIBLE]           |
+

@@ -1,0 +1,57 @@
+# Introduction
+
+
+```{r setup, include=FALSE}
+library(rbytecode)
+```
+
+
+
+Modern R now executes most code in a stack-based virtual machine (VM).
+
+The VM doesn't really see the R code a programmer writes - this R code is first parsed to 
+an abstract syntax tree, which is then compiled to bytecode,  and this 
+bytecode is then executed in the VM.
+
+This book is an introduction to this bytecode and a reference for the 
+instructions which make it up.
+
+
+## Who is this book for?
+
+
+The image below shows a "mud map" of the layers which could be thought of as
+making up R.  It's not really accurate, but it gives an idea of where "bytecode"
+fits in to an understanding of R - at a lower level than writing a package, but
+not as complex as writing a virtual machine.
+
+![The onion of R](figures/abstraction-layers.png)
+
+
+Everyone is at a different stage of their R journey. Not everyone will find
+this book interesting, useful or even understandable.
+
+You may be interested in the book if:
+
+* you like peeking under the hood;
+* you enjoy a puzzle;
+* you've written assembly code for a CPU;
+* you're a big fan of esoterica.
+
+
+## How to read this book
+
+First, install the [`{rbytecode}`](https://github.com/coolbutuseless/rbytecode) package. `{rbytecode}` includes an assembler for R bytecode. This means that
+it is possible to create R programs directly by writing bytecode assembly.  
+
+More importantly, `{rbytecode}` includes a *disassembler* which
+makes it possible to take apart existing code and see how it works - leveraging
+existing knowledge of R to understand what the bytecode is doing.
+
+With `{rbytecode}` installed, use the disassembler with small R code examples and
+refer to the instruction reference in [Section -@sec-op].  Repeat.
+
+Then use the assembler to write and compile your own code.  Burn your fingers on 
+multiple segfaults - build up some calluses.
+
+Then never get around to actually reading anything else in this book. :)

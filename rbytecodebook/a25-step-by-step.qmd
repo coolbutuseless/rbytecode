@@ -1,0 +1,124 @@
+
+```{r include=FALSE}
+library(rbytecode)
+```
+
+
+
+# Appendix: Manual Bytecode Compilation {#sec-step-by-step}
+
+This chapter provides a conceptual walk-through of how R bytecode assembly
+is turned into a bytecode object.
+
+## Example bytecode assembly
+
+The example bytecode assembly is simply performing the addition of 2 numbers.
+
+```{r eval=FALSE}
+LDCONST 10
+LDCONST 20
+ADD
+RETURN
+```
+
+
+## Initialise `consts` list
+
+Storage is first created for the constants which appear in the code.  Note that
+this storage uses 0-based indexing as it is referenced from C, not R.
+
+![Initialising `consts` storage](figures/manual-consts-00.png)
+
+## Store constants
+
+Constants and expressions are stored in the `consts` area.
+
+In the bytecode, it is the index to the 
+storage location that is the actual argument to the instruction.
+
+
+![Storing values in `consts`](figures/manual-consts-01.png)
+
+```{r eval=FALSE}
+LDCONST <0>
+LDCONST <1>
+ADD
+RETURN
+```
+
+## Stored expressions
+
+The `ADD` instruction as defined in R requires a reference to a stored expression.  In `{rbytecode}`
+this is automatically created as a dummy quoted expression that is helpful
+when debugging.
+
+This stored expression is placed into `consts` and the argument to the `ADD`
+instruction
+is the index of this storage location.
+
+
+![Storing expressions in `consts`](figures/manual-consts-02.png)
+
+```{r eval=FALSE}
+LDCONST <0>
+LDCONST <1>
+ADD     <2>
+RETURN
+```
+
+
+## Lookup integer code for each instruction.
+
+The string representing the instruction is turned into an integer, based upon
+its location in the full list of instruction codes stored in `compiler:::Opcode.names`.
+
+```{r}
+head(compiler:::Opcodes.names)
+```
+
+
+The opcode for each instruction in the example bytecode assembly is determined
+and takes the place of the string representation.
+
+```{r}
+match(c('LDCONST.OP', 'ADD.OP', 'RETURN.OP'), compiler:::Opcodes.names) - 1L
+```
+
+
+
+![Final state of `consts` storage](figures/manual-consts-02.png)
+
+```{r eval=FALSE}
+<16> <0>
+<16> <1>
+<44> <2>
+<1>
+```
+
+## Final bytecode.
+
+The almost final bytecode:
+
+1. vector of integers: `c(16, 0, 16, 1, 44, 2, 1)`
+2. list of `consts`: `list(10, 20, quote(stop("ADD")))`
+
+
+To prevent inconsistencies in code execution when the bytecode instruction set is updated, 
+the vector of bytecode integers is prefixed with the bytecode version number.  In
+R v4.3.1 the version number is `12`.
+
+
+The final bytecode object is then:
+
+1. vector of integers: `c(12, 16, 0, 16, 1, 44, 2, 1)`
+2. list of `consts`: `list(10, 20, quote(stop("ADD")))`
+
+
+
+
+
+
+
+
+
+

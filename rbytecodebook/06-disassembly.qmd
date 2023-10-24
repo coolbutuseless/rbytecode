@@ -1,0 +1,125 @@
+
+```{r include = FALSE}
+library(rbytecode)
+```
+ 
+# Disassembling bytecode {#sec-disassembly}
+
+A disassembler is a means of breaking a set of VM instructions into human-readble
+text.
+
+With a disassembler we can take existing R code and explore the bytecode instructions
+behind the execution.  
+
+## `rbytecode::dis()`
+
+`dis()` is the disassembler in the `{rbytecode}` package.  When dissassembling code
+`dis()` returns a data.frame of information called the **bytecode data.frame** (or `bcdf`).
+
+The `bcdf` contains structured information about each of the bytecode instructions
+making up the given code.
+
+Calling `as.character()` on the `bcdf` results in a shorter, more compact version
+of the *bytecode assembly*.  This *bytecode assembly* can be used as the input to
+`rbytecode::asm()` to compile the instructions back into an executable R
+*bytecode object*.
+
+The `disq()` variant of the disassembler captures the argument without 
+evaluating it first and passes the unevaluated expression to `dis()`
+
+
+## Dissassembly of a simple example
+
+A disassembly of the R code `1 + x` is shown below:
+
+```{r}
+disq(1 + x)
+```
+
+The output (a `bcdf` data.frame) shows all the instructions and their arguments.  It 
+also includes bookkeeping information about the instruction:
+
+* `depth` the recursion depth in terms of nexted promises and closures
+* `pc` the program counter. the index of the start of this instruction in 
+   relation to the code at this depth.
+* `opcode` the numeric value used to represent this instruction
+* `op` the short text string representing this instruction
+* `args` the list of arguments to this function
+
+
+Details about the operation of individual instructions can be found in 
+the Instruction Reference ([Section -@sec-op]).  There you can find details such as
+instruction count, stack usage and the whether this command requires a
+*stored expression* (See [Section -@sec-stored-expressions]).
+
+In this particular example we can see that `1 + x` does the following:
+
+* `LDCONST 1` - Loads the constant `1` onto the stack.
+* `GETVAR x` - Fetches the variable `x` and loads its value onto the stack
+* `ADD` Adds the two items on the top of the stack and pushes the result back 
+        onto the stack.
+* `RETURN` passes the value at the top of the stack back to the calling environment.
+
+A compact representation of the *bytecode assembly* can be created by casting the
+`bcdf` to `as.character()`
+
+```{r}
+disq(1 + x) |> as.character()
+```
+
+Depending on what information you are after, both the `bcdf` and the compact
+*bytecode assembly* view are useful for exploring code.
+
+
+## More complex disassembly
+
+```{r}
+disq({
+  f <- function(x, y = 1) {
+    x + y
+  }
+  f(x = 3)
+}) |> as.character()
+```
+
+In this more involved example:
+
+* `MAKECLOSURE`/`ENDMAKECLOSURE` delimit the body (and arguments) of the function 
+  and put it on the stack.
+* `SETVAR f` takes this closure definition off the stack and assigns it to the variable `f`
+* `GETFUN` sets up the function to be called. `PUSHCONSTARG` and `SETTAG` set
+  up the argument, and `CALL` executes this function call.
+
+
+## Disassembly of a `ggplot()` call
+
+In the following `ggplot()` call, the majority of the code is making promises
+with `MAKEPROM`, and using these as arguments to functions specified by `GETFUN`
+
+```{r}
+disq({
+  library(ggplot2)
+  ggplot(mtcars) + 
+    geom_point(aes(mpg, wt))
+}) |> as.character()
+```
+
+
+## Summary
+
+The bytecode instructions behind existing R code can be inspected using `dis()`
+and `disq()` from the `{rbytecode}` package.
+
+The *bytecode assembly* can be read and explored, and in the next section 
+we can use `rbytecode::asm()` to compile the bytecode back into an 
+executable *bytecode object*.
+
+
+
+
+
+
+
+
+
+

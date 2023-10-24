@@ -1,0 +1,64 @@
+
+ 
+```{r include=FALSE}
+library(rbytecode)
+```
+
+
+# Assembling bytecode (II)
+
+The package [`{rbytecode}`](https://github.com/coolbutuseless/rbytecode) provides a means
+of creating R bytecode objects from a text representation of the instructions.  This
+text is referred to as **R bytecode assembly**.  
+
+The compilation process in `{rbytecode}` differs from R's built-in bytecode compiler
+in that it does not take R code as input - instead the input code is a sequence 
+of R bytecode instructions.
+
+
+
+
+## High-level description
+
+A high-level overview of the assembly process is show in the image below:
+
+![High-level overview of compiling bytecode assembly](figures/overview-assembly.png)
+
+1. R bytecode assembly (text) is compiled using `rbytecode::asm()`
+2. The output is a standard R bytecode object.
+3. This bytecode object can then be executed by `eval()` where it is passed
+   to R's bytecode VM to produce a result.
+
+
+
+## Details on compilation
+
+The process of compiling bytecode assembly to a bytecode object actually 
+happens in two phases:
+
+1. Parsing of the assembly code into a data.frame object called `bcdf` i.e.
+   `bytecode data.frame`
+2. The `bcdf` is the main data structure for translation of the instructions into a
+   bytecode object.  
+
+![The two-step process of compilation: parsing assembly code and producing bytecode](figures/overview-assembly-detail.png)
+
+Creating a bytecode object from `bcdf` is enabled by using other key 
+data structures and methods from the `{compiler}` package.
+
+For each row in the `bcdf`:
+
+* The integer code for the instruction is its position in `compiler:::Opcodes.names`
+  (and adjusted for C's 0-based indexing)
+* The argument count is from `compiler:::Opcodes.argc`
+* The type of each argument have been included in the `{rbytecode}` package's main 
+  meta-information data structure: `rbytecode::ops`
+* For each argument for the instruction from this row in the `bcdf` 
+  place the arguments in the `consts` list
+* The full instruction is then a vector of integers comprised of:
+    * the instruction opcode
+    * integer indexes in the `consts` list - one for each argument
+    
+
+See [Section -@sec-step-by-step] for a walkthrough of the compilation process
+on some simply bytecode assembly.

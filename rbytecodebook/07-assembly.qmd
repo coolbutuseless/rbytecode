@@ -1,0 +1,65 @@
+
+```{r include = FALSE}
+library(rbytecode)
+```
+
+# Assembling bytecode {#sec-assembly}
+
+After exploring the disassembly process ([Section -@sec-disassembly]), it is possible 
+to take the output and re-compile it into an executable *bytecode object*.
+
+Compiling *bytecode assembly* to an R *bytecode object* is achieved using 
+`rbytecode::asm()`.
+
+It is also possible to compile bytecode in two steps using `parse_code()` to 
+produce a `bcdf`, and then compile the `bcdf` data.frame to a *bytecode object*
+using `compile_bcdf()`.
+
+
+## Compiling bytecode - simple example
+
+`asm()` accepts a single string of bytecode instructions (one instruction per line).
+
+The input is parsed and compiled into bytecode using (internal) parts of
+base R's `{compiler}` package.
+
+
+```{r}
+code <- r"(
+LDCONST 1
+LDCONST 2
+ADD
+RETURN
+)"
+
+bc <- asm(code)
+bc
+
+eval(bc)
+```
+
+
+## Compiling bytecode - two-step process
+
+```{r}
+code <- r"(
+LDCONST 1
+LDCONST 2
+ADD
+RETURN
+)"
+
+bcdf <- parse_code(code)
+bcdf
+
+bc <- compile_bcdf(bcdf)
+bc
+
+eval(bc)
+```
+
+
+## Next steps
+
+* Read the allowed syntax for *bytecode assembly* [Section -@sec-bytecode-assembly-syntax]
+* Explore the reference information about each of the instructions [Section -@sec-op]

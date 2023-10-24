@@ -1,0 +1,10 @@
+# Summary
+
+Modern R now executes most code in a stack-based virtual machine (VM).
+
+The *bytecode* which runs on the VM has until now mostly been hidden.
+
+This book, and the `{rbytecode}` package are an exploration of this *bytecode*
+and regular users now have the tools to inspect and understand what their 
+code is doing at the lowest level of R.
+

@@ -1,0 +1,180 @@
+
+```{r include=FALSE}
+library(rbytecode)
+```
+ 
+ 
+# Bytecode Assembly Syntax {#sec-bytecode-assembly-syntax}
+ 
+This chapter outlines the required syntax when writing R *bytecode assembly* for the `{rbytecode}` package.
+There are constraints on how this bytecode assembly must be written in order to 
+satisfy the parser and compiler.
+
+In general, R bytecode objects
+were only ever designed to be created by compiling the Abstract Syntax Tree (AST)
+from parsed R code.   From the AST, R knows much more global information on
+what code is being executed e.g. it can know that a particular `ADD` instruction
+is part of larger expression e.g. `1 + (x * 3)`.   
+
+When writing R bytecode assembly for `rbytecode`, the *programmer* has to keep track of context,
+and won't have any reference to wider expression structure that they don't 
+keep track of themselves.
+
+
+## Comments
+
+* Comments on their own line must be prefixed by `#`
+    * Everything on such a line will be ignored during compilation
+* Comments at the end of an instruction must be prefixed by `##`
+    * Everything after `##` until the end of the line will be ignored during compilation
+
+### Example of comment syntax
+
+```{r eval=FALSE}
+code <- r"(
+# this code adds 1 and 2
+LDCONST 1  ## This is a valid comment
+LDCONST 2
+ADD
+# result of 1+2 is the last thing on the stack
+RETURN
+)"
+```
+
+
+## Labels
+
+* A label is a reference to a location in the code
+* A label may be any alphanumeric string prefixed by a `@`
+* A label should not include any whitespace
+* When a label is used to mark a location 
+    * the `@` must be the first non-whitespace character on the line.
+    * the label is the only instruction which appears on that line
+
+
+The following code uses the `GOTO` command to jump further ahead in the code
+and return the value `2`.
+
+```{r}
+code <- r"(
+GOTO @jump_loc
+LDCONST 1
+RETURN
+@jump_loc
+LDCONST 2
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+
+## Whitespace
+
+* Each instruction must appear on a single line.
+* Leading and trailing whitespace on each line is removed prior to parsing
+
+
+## Instructions
+
+* Bytecode assembly instructions are written in ALL CAPS
+* Only one instruction is allowed on a single line
+* The complete instruction must not be spread over multiple lines
+* The instructions do **not** end in the `.OP` suffix which is used in the 
+  R source code.
+
+
+## Stored Expressions
+
+Stored expressions are considered an *annotation* for the instruction and 
+not part of the instruction itself.
+
+**In general you do not need to set stored expressions for any instruction.**  
+
+In all cases where an `expridx` argument is required, the compiler internally
+takes care of inserting an appropriate expression which will print the location
+if an error occurs at this instruction.
+
+For advanced users, a stored expression may be specified alongside an instruction, 
+and this will override any internal default.  Note that this stored expression is 
+almost never actually evaluated.
+
+To add a stored expression to an instruction, use `$$` after the 
+instruction arguments and include text which can be parsed to a valid
+R expresssion.
+
+In the example below, note that the expression `bingo + bluey` is never 
+executed or output in the evaluation of the bytecode.
+
+```{r}
+code <- r"(
+LDCONST 1
+LDCONST 2
+ADD        $$ bingo + bluey
+RETURN
+)"
+
+asm(code) |> eval()
+```
+
+See Stored Expressions ([Chapter -@sec-stored-expressions]) for more details on 
+when a stored expression is printed or evaluated.
+
+
+## Special handling `MAKEPROM` {#sec-end-makeprom}
+
+`MAKEPROM` is an instruction for creating a **promise**.  A promise is a
+language object capturing code to be evaluated at a later time.
+
+A common place where promises are used are in function arguments which are
+not executed before the function is called i.e. they are evaluated within the function body
+when referenced.
+
+Without the context of R code, there is no way in bytecode assembly to know 
+where a `MAKEPROM` ends.   `{rbytecode}` introduces the dummy instruction `ENDMAKEPROM`
+to mark the end of a promise definition.
+
+Note: `ENDMAKEPROM` does not generate any bytecode itself. It is merely added to
+bytecode assembly to make parsing possible.
+
+It is advised (but not necessary) to use leading whitespace to help visually highlight 
+the contents of the promise.
+
+```{r}
+disq(f(x = y + 1)) |> 
+  as.character()
+```
+
+
+
+## Special handling: `MAKECLOSURE` {#sec-end-makeclosure}
+
+`MAKECLOSURE` is an instruction for creating a **closure**.  A closure is a 
+language object corresponding to a function definition.
+
+
+Without the context of R code, there is no way in bytecode assembly to know 
+where a `MAKECLOSURE` ends.   `{rbytecode}` introduces the dummy instruction `ENDMAKECLOSURE`
+to mark the end of a closure definition.
+
+Note: `ENDMAKECLOSURE` does not generate any bytecode itself. It is merely added to
+bytecode assembly to make parsing possible.
+
+```{r}
+disq(function(x, y = 1) {x + y}) |>
+  as.character()
+```
+
+### Formal arguments to `MAKECLOSURE`
+
+The formal arguments to `MAKECLOSURE` are specified as a semicolon-delimited 
+list of strings.  Each string may either be a name (e.g. `x`) or a named value
+e.g. `y = 1`.  These values are then parsed to create a pairlist e.g. `as.pairlist(alist(x, y = 1))`.
+
+See the above code for an example.
+
+
+
+
+
+

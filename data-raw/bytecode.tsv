@@ -1,0 +1,409 @@
+name	code	unused	asm	argc	pop	push	arg1	arg2	arg3	arg4	desc1	desc2	desc3	desc4	title	example	rexample	description
+ADD.OP	44		TRUE	1	2	1	expridx				Stored expression				Add values	"# 1 + 2
+LDCONST 1
+LDCONST 2
+ADD
+RETURN"	x + y	
+AND.OP	57		TRUE	1	2	1	expridx				Stored expression				Vector logical AND	"LDCONST c(TRUE, TRUE, FALSE, FALSE)
+LDCONST c(FALSE, TRUE, FALSE, TRUE)
+AND
+RETURN"	x & y	
+AND1ST.OP	88		TRUE	2	1	1	expridx	label			Stored expression	Location to jump to if first logical value is FALSE			Scalar logical AND (Part 1)	"# TRUE && FALSE
+LDTRUE
+AND1ST @label1
+LDFALSE
+AND2ND
+@label1
+RETURN"	x && y	"Scalar logical AND in R supports ""short-circuiting"" the operation i.e. if the first argument is FALSE, then the second argument is never evaluated.
+
+The AND1ST instruction pops a value from the stack, and if FALSE jumps to the position specified in its label argument i.e. the position after the end of the trailing `AND2ND` statement.
+
+Following the `AND1ST` instruction is the code for the right-hand side of the AND operation and which is concluded with an `AND2ND` statement."
+AND2ND.OP	89		TRUE	1	1	1	expridx				Stored expression				Scalar logical AND (Part 2)	"LDTRUE
+AND1ST @label1
+LDFALSE
+AND2ND
+@label1
+RETURN"	x && y	See the `AND1ST` instruction [Section -@sec-AND1ST]
+BASEGUARD.OP	123		TRUE	2	0	0	expridx	label			Stored expression	Location to jump to if function is not valid			Guard execution of base R functions	"BASEGUARD @label1
+GETBUILTIN list
+PUSHCONSTARG 1
+PUSHCONSTARG 2
+CALLBUILTIN
+@label1
+RETURN"	list(a, b, c)	"Baseguard guards against the scenario that the the following function is not the default function builtin to R.
+
+### Hypothesis
+
+If the fetched function is not identical to the builtin (because there is a user-defined function of the same name that takes precedence), then the expression (at the *expridx*) is evaluated in the interpreter instead. "
+BCMISMATCH.OP	0		TRUE	0	0	0									Raise error to indicate bytecode version mismatch			"Raises an error indicating the bytecode version does not match the current bytecode engine in R.
+
+This error could happen if bytecode compiled on an old version of R is exectuted on a newer version.
+
+The bytecode version is stored as the first integer in the compiled bytecode.
+
+As of R v4.3.1, bytecode is at version 12."
+BRIFNOT.OP	3		TRUE	2	1	0	expridx	label			Stored expression	Location to jump to if value popped off stack is FALSE			Branch if not TRUE	"LDFALSE
+BRIFNOT @label1
+LDCONST 1
+RETURN
+@label1
+LDCONST 2
+RETURN"	if (x > 5) print('hello')	"Note: There is no instruction for ""Branch if TRUE"""
+CALL.OP	38		TRUE	1	0	1	expridx				Stored expression				Call function specified by GETFUN	"GETFUN print
+PUSHCONSTARG ""hello""
+CALL
+RETURN"	runif(3)	The list of arguments (separate from the stack and the consts storage) is created by calls to `PUSHARG`, `PUSHCONSTARG` etc.
+CALLBUILTIN.OP	39		TRUE	1	0	1	expridx				Stored expression				Call a builtin function	"GETBUILTIN list
+PUSHCONSTARG 1
+PUSHCONSTARG 2
+CALLBUILTIN
+RETURN"	c(a, b, c)	"The list of arguments (separate from the stack and the consts storage) is created by calls to `PUSHARG`, `PUSHCONSTARG` etc.
+
+See Builtin Functions ([Section -@sec-builtinfunctions]) for background and a list of built-in functions."
+CALLSPECIAL.OP	40		TRUE	1	0	1	asis				"Character string which parses to a valid expression calling a ""special"" function.
+
+See [Section -@sec-specialfunctions] for more details. "				Call a special function	"CALLSPECIAL rep(1, 3)
+RETURN"	rep(1, 3)	"See Special Functions ([Section -@sec-specialfunctions]) for background and a list of special functions.
+
+Note that `CALLSPECIAL` takes a single argument that is the full expression of the function to be called including the arguments."
+CHECKFUN.OP	28		TRUE	0	?	?									Check a function call is valid		get('list')(10)	This instruction checks that the value on top of the stack is a function.  This is only needed when the function is referenced by something other than a symbol.  E.g. `list(10)` does not generate this instruction, but `get('list')(10)` does.
+COLON.OP	120		TRUE	1	2	1	expridx				Stored expression				Colon operator e.g. 1:5	"LDCONST 1
+LDCONST 5
+COLON
+RETURN"	x:y	
+DDVAL_MISSOK.OP	93		TRUE	1			name				Name of value to fetch				Get a double-dot value. OK if it is missing			
+DDVAL.OP	21		TRUE	1			name				Name of value to fetch				Get a double-dot value		function(...) print(..3)	
+DECLNK_N.OP	126		FALSE	1			const				Integer count of items in the stack on which to decrease the link count.				Decrease link count on N stack items			"Same as DECLNK for for n values?
+
+Help needed: R code example which uses this instruciton."
+DECLNK.OP	125		FALSE	0	1	1									Decrease link count on next stack item			"The `INCLNK` and `DECLNK` instructions are used to protect evaluated arguents on the stack from 
+modifications during evaluation of subsequent arguments.
+
+Help needed: R code example which uses this instruction."
+DECLNKSTK.OP	128		TRUE	0											Decrease link count on the stack istelf after not-top-level complex assignment			"Unprotect stack after non-top-level complex assignment.  This instruction pairs with `INCLNKSTK`.
+
+Help needed: R code example which uses this instruction."
+DFLTC.OP	68	TRUE	FALSE	0	NA	NA									Deprecated instruction			"This is a vestigal instruction that used to be paired with an opening `STARTC` to peform the equivalent of `c(...)`.
+
+Now that `c()` is a builtin function, use `GETBUILTIN` and `CALLBUILTIN` instead.
+
+See also R source `main/eval.c` where comments indicate this OP is no longer used."
+DFLTSUBASSIGN.OP	66		TRUE	0											Default subassignment with `[]`		a[] <- 1	
+DFLTSUBASSIGN2.OP	72		TRUE	0											Default subassignment with `[[]]`		a[[]] <- 1	
+DFLTSUBSET.OP	64		TRUE	0											Default subset with `[]`		a[]	
+DFLTSUBSET2.OP	70		TRUE	0											Default subset with `[[]]`		a[[]]	
+DIV.OP	47		TRUE	1	2	1	expridx				Stored expression				Division	"LDCONST 1
+LDCONST 2
+DIV
+RETURN"	x / y	
+DODOTS.OP	32		TRUE	0											Process `...`			
+DOLLAR.OP	73		TRUE	2	1	1	expridx	name			Stored expression	RHS name for `$`.  LHS is popped from stack.			`$`operator when used to fetch a value		x$y	
+DOLLARGETS.OP	74		TRUE	2			expridx	name			Stored expression	RHS name for `$`.  LHS is popped from stack.			`$` operator when used to set a value		a$b <- 3	
+DOLOOPBREAK.OP	10		TRUE	0											Purpose currently unknown.			Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+DOLOOPNEXT.OP	9		TRUE	0											Purpose currently unknown.			Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+DOMISSING.OP	30		TRUE	0											Handle missing arguments		f(x = )	Handling for missing arguments when function arguments being assessed at time of call
+DOTCALL.OP	119		TRUE	2			expridx	value			Stored expression	Number of arguments to this call. 			Call a C function		.Call(hello, x, y, z)	This instruction is a specialised call for up to 16 arguments.  For 17 or more arguments, need to use `CALLBUILTIN` instead.
+DOTSERR.OP	60		TRUE	0											Trigger error when `...` used out of context	"DOTSERR
+RETURN"		
+DUP.OP	5		TRUE	0	1	2									Duplicate the top value in the stack to make it the first two values in the stack.	"LDCONST 1
+DUP
+ADD
+RETURN"		
+DUP2ND.OP	101		TRUE	0	2	3									Duplicate the second value in the stack to push it onto the stack (so it is the first item)	"LDCONST 10
+LDCONST 20
+DUP2ND
+RETURN"		
+ENDASSIGN.OP	62		TRUE	1			name				Name of variable into which value is being assigned				Mark the end of an assignment operation started with `STARTASSIGN`		a[1] <- 2	
+ENDASSIGN2.OP	97		FALSE	1			name				Name of variable into which value is being assigned				Mark the end of an assignment operation started with `STARTASSIGN2`			
+ENDFOR.OP	13		TRUE	0											Signify end of `for` loop.		for(i in 1:3) {print(i)}	See also [STEPFOR  Section -@sec-STEPFOR] and [STARTFOR Section -@sec-STARTFOR].
+ENDLOOPCNTXT.OP	8		TRUE	1			expridx				Stored expression				End loop context			See `STARTLOOPCNTXT` ([Section -@sec-STARTLOOPCNTXT])
+EQ.OP	51		TRUE	1	2	1	expridx				Stored expression				Test equality	"LDCONST 2
+LDCONST 2
+EQ
+RETURN"	x == 4	
+EXP.OP	50		TRUE	1	1	1	expridx				Stored expression				Exponential	"LDCONST 2
+EXP
+RETURN"	exp(x)	
+EXPT.OP	48		TRUE	1	2	1	expridx				Stored expression				Exponent. 	"LDCONST 2
+LDCONST 3
+EXPT
+RETURN"	x^2	
+GE.OP	55		TRUE	1	2	1	expridx				Stored expression				Test greater than or equal to	"LDCONST 7
+LDCONST 5
+GE
+RETURN"	x >= 5	
+GETBUILTIN.OP	26		TRUE	1	0	1	name				Name of builtin function.  See [Section -@sec-builtinfunctions] for more details.				Get a built-in function	"GETBUILTIN list
+PUSHCONSTARG 1.23
+CALLBUILTIN
+RETURN"	list(1, x)	
+GETFUN.OP	23		TRUE	1	0	1	name				Name of function				Get a named function	"GETFUN runif
+PUSHCONSTARG 3
+CALL
+RETURN"	fn(1)	
+GETGLOBFUN.OP	24		TRUE	1			name				Name of function				Get a named function from the global environment (Unconfirmed)			Help needed: R code which uses this instruction.
+GETINTLBUILTIN.OP	27		TRUE	1			name				Name of function				Get an internal function		".Internal(disassemble(asm(""RETURN"")))"	
+GETSYMFUN.OP	25		FALSE	1			name				Name of function				Get a function by its symbol (Unconfirmed)			Help needed: R code which uses this instruction.
+GETTER_CALL.OP	99		FALSE	1			expridx				Stored expression				Used in complex assignment expressions			Help needed: R code which uses this instruction.
+GETVAR_MISSOK.OP	92		TRUE	1			name				Name of variable				Get a named variable. Missing values allowed.		a[i]	
+GETVAR.OP	20		TRUE	1	0	1	name				Name of variable				Get a named variable	"LDCONST 1
+SETVAR x
+POP
+GETBUILTIN list
+GETVAR x
+PUSHARG
+CALLBUILTIN
+RETURN"	1 + x	
+GOTO.OP	2		TRUE	1	0	0	label				Location to jump to				Jump to the labelled location	"  LDCONST 5
+  LDCONST 4
+  GE
+  BRIFNOT @label1
+  LDCONST 66
+  GOTO @label2
+  @label1
+  LDCONST 99
+  RETURN
+  @label2
+  RETURN"	while(TRUE) print('hello')	
+GT.OP	56		TRUE	1	2	1	expridx				Stored expression				Test greater than	"LDCONST 7
+LDCONST 5
+GT
+RETURN"	x > 5	
+INCLNK.OP	124		FALSE	0	1	1									Protect evaluated arguments on the stack.			"The `INCLNK` and `DECLNK` instructions are used to protect evaluated arguents on the stack from 
+modifications during evaluation of subsequent arguments.
+
+Help needed: R code which uses this instruction."
+INCLNKSTK.OP	127		TRUE	0	1	1									Protect evaluated arguments on the stack.			"Protect stack during a non-top-level complex assignment.  This instruction must be paired with `DECLNKSTK`.
+
+Help needed: R code which uses this instruction."
+INVISIBLE.OP	15		TRUE	0	1	1									Mark a value as invisible.	"LDCONST 1
+INVISIBLE
+RETURN"		A bytecode version of the `invisible()` function.
+ISCHARACTER.OP	80		TRUE	0	1	1									Test is character	"LDCONST ""a""
+ISCHARACTER
+RETURN"	is.character(x)	
+ISCOMPLEX.OP	79		TRUE	0	1	1									Test is complex	"LDCONST 1i
+ISCOMPLEX
+RETURN"	is.complex(x)	
+ISDOUBLE.OP	78		TRUE	0	1	1									Test is double	"LDCONST 1.23
+ISDOUBLE
+RETURN"	is.double(x)	
+ISINTEGER.OP	77		TRUE	0	1	1									Test is integer	"LDCONST 1L
+ISINTEGER
+RETURN"	is.integer(x)	
+ISLOGICAL.OP	76		TRUE	0	1	1									Test is logical	"LDCONST TRUE
+ISLOGICAL
+RETURN"	is.logical(x)	
+ISNULL.OP	75		TRUE	0	1	1									Test is NULL	"LDNULL
+ISNULL
+RETURN"	is.null(x)	
+ISNUMERIC.OP	83		TRUE	0	1	1									Test is numeric	"LDCONST 1
+ISNUMERIC
+RETURN"		
+ISOBJECT.OP	82		TRUE	0	1	1									Test is object	"LDCONST ""a""
+ISOBJECT
+RETURN"	is.object(x)	
+ISSYMBOL.OP	81		TRUE	0	1	1									Test is symbol	"LDCONST 1.23
+ISSYMBOL
+RETURN"	is.symbol(x)	
+LDCONST.OP	16		TRUE	1	0	1	const				Value or expression				Load a constant onto the stack	"LDCONST 1.23
+RETURN"	1 + x	"This instruction loads a value onto the stack.  This can be a vector or scalar.
+
+In the assembler in this package, and valid R expression may be given as the constant and its value will be evaluated at compile time. E.g.
+
+```{r eval=FALSE}
+LDCONST runif(3)
+RETURN
+```"
+LDFALSE.OP	19		TRUE	0	0	1									Load FALSE onto the stack	"LDFALSE
+RETURN"	x & FALSE	
+LDNULL.OP	17		TRUE	0	0	1									Load NULL onto the stack	"LDNULL
+RETURN"	NULL > x	
+LDTRUE.OP	18		TRUE	0	0	1									Load TRUE onto the stack	"LDTRUE
+RETURN"	x & TRUE	
+LE.OP	54		TRUE	1	2	1	expridx				Stored expression				Test less than or equal to	"LDCONST 7
+LDCONST 5
+LE
+RETURN"	x <= 5	
+LOG.OP	116		TRUE	1	1	1	expridx				Stored expression				Log (base e)	"LDCONST 2.71
+LOG
+RETURN"	log(x)	
+LOGBASE.OP	117		TRUE	1	2	1	expridx				Stored expression				Log	"LDCONST 10
+LDCONST 2
+LOGBASE
+RETURN"	log(100, 10)	
+LT.OP	53		TRUE	1	2	1	expridx				Stored expression				Test less than	"LDCONST 7
+LDCONST 5
+LT
+RETURN"	x < 5	
+MAKECLOSURE.OP	41		TRUE	1	0	1	closure				Sequence of arguments to closure separated by semi-colons.				Make a closure		function(x) {x + 1}	"For the purposes of compiling with `{asmr}` this instruction must be terminated with an `ENDMAKECLOSURE` instruction.
+
+`ENDMAKECLOSURE` is not a real instruction, and only exists as a way of instructing the compiler how to behave in the absence of higher-level R syntax to consult.  See [Section -@sec-end-makeclosure] for more details."
+MAKEPROM.OP	29		TRUE	1	0	1	promise				Special handling for promises in `{rbytecode}` means that the argument is automatically inferred from the instructions within `MAKEPROM`/`ENDMAKEPROM`				Make a promise	"GETFUN head
+MAKEPROM
+  GETVAR mtcars
+  RETURN
+ENDMAKEPROM
+CALL
+RETURN"	runif(n = 3, min = x)	"For the purposes of compiling with `{asmr}` this instruction must be terminated with an `ENDMAKEPROM` instruction. 
+
+`ENDMAKEPROM` is not a real instruction, and only exists as a way of instructing the compiler how to behave in the absence of higher-level R syntax to consult. See [Section -@sec-end-makeprom] for more details."
+MATH1.OP	118		TRUE	2	1	1	expridx	math1name			Name of valued math operation.  See [Section -@sec-math1functions]				Perform a mathematical operation.	"LDCONST 1:5
+MATH1 sin
+RETURN"	floor(x)	"Perform one of the built-in mathematical operations.
+
+```{r}
+# List of all operations
+compiler:::math1funs
+```"
+MATSUBASSIGN.OP	87		TRUE	1	2	0	expridx				Stored expression				Assign into matrix with `[`		m[1,2] <- 1	
+MATSUBASSIGN2.OP	109		TRUE	1	2	0	expridx				Stored expression				Assign into matrix with `[[`		m[[1,2]] <- 1	
+MATSUBSET.OP	85		TRUE	1	2	0	expridx				Stored expression				Subset matrix with `[`		m[1,2]	
+MATSUBSET2.OP	107		TRUE	1	2	0	expridx				Stored expression				Subset matrix with `[[`		m[[1,2]]	
+MUL.OP	46		TRUE	1	2	1	expridx				Stored expression				Multiply	"LDCONST 1
+LDCONST 2
+MUL
+RETURN"	x * y	
+NE.OP	52		TRUE	1	2	1	expridx				Stored expression				Test not equal to	"LDCONST 2
+LDCONST 3
+NE
+RETURN"	x != 3	
+NOT.OP	59		TRUE	1	1	1	expridx				Stored expression				Logical NOT operation	"LDTRUE
+NOT
+RETURN"	!x	
+OR.OP	58		TRUE	1	2	1	expridx				Stored expression				Vector logical OR	"LDCONST c(TRUE, TRUE)
+LDCONST c(TRUE, FALSE)
+OR
+RETURN"	x | y	
+OR1ST.OP	90		TRUE	2	1	1	expridx	label			Stored expression	Location to jump to if first logical value is TRUE			Scalar logical OR (Part 1)	"LDFALSE
+OR1ST @label1
+LDFALSE
+OR2ND
+@label1
+RETURN"	x || y	"Scalar logical OR in R supports ""short-circuiting"" the operation i.e. if the first argument is TRUE, then the second argument is never evaluated.
+
+The OR1ST instruction pops a value from the stack, and if TRUE jumps to the position specified in its label argument i.e. the position after the end of the trailing `OR2ND` statement.
+
+Following the `OR1ST` instruction is the code for the right-hand side of the OR operation which is concluded with an `OR2ND` statement."
+OR2ND.OP	91		TRUE	1	1	1	expridx				Stored expression				Scalar logical OR (Part 2)		x || y	See the `OR1ST` instruction [Section -@sec-OR1ST]
+POP.OP	4		TRUE	0	1	0									Pop a value off the stack (and discard)	"LDCONST 1
+LDCONST 2
+POP
+RETURN"		
+PRINTVALUE.OP	6		TRUE	0	?	?									Purpose currently unknown.			Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+PUSHARG.OP	33		TRUE	0	1	0									Push an value from the stack into the list of arguments for a call	"LDCONST 1
+SETVAR x
+POP
+GETBUILTIN list
+GETVAR x
+PUSHARG
+CALLBUILTIN
+RETURN"	list(1, x)	
+PUSHCONSTARG.OP	34		TRUE	1	1	0	const				Value or expression to add to list of arguments for a function call				Push a constant value into the list of arguments for a call.	"GETFUN runif
+PUSHCONSTARG 3
+CALL
+RETURN"	list(1, x)	
+PUSHFALSEARG.OP	37		TRUE	0	0	0									Push `FALSE` into the list of arguments for a call	"GETFUN identity
+PUSHFALSEARG
+CALL
+RETURN"	f(1, NULL, TRUE, FALSE)	
+PUSHNULLARG.OP	35		TRUE	0	0	0									Push `NULL` into the list of arguments for a call	"GETFUN identity
+PUSHNULLARG
+CALL
+RETURN"	f(1, NULL, TRUE, FALSE)	
+PUSHTRUEARG.OP	36		TRUE	0	0	0									Push `TRUE` into the list of arguments for a call.	"GETFUN identity
+PUSHTRUEARG
+CALL
+RETURN"	f(1, NULL, TRUE, FALSE)	
+RETURN.OP	1		TRUE	0	1	0									Return control to the caller	"LDCONST 1
+LDCONST 2 
+ADD
+RETURN"	a + 1	
+RETURNJMP.OP	103		TRUE	0	1	0									"Return control to the caller via a ""longjmp"""			It's unclear on exactly when this instruction is generated.
+SEQALONG.OP	121		TRUE	1	1	1	expridx				Stored expression				Create an integer sequence the same length as that next value on the stack.	"LDCONST c(10, 20, 30)
+SEQALONG
+RETURN"	seq_along(c(x, y, z))	
+SEQLEN.OP	122		TRUE	1	1	1	expridx				Stored expression				Create an integer sequence of the given length	"LDCONST 5
+SEQLEN
+RETURN"	seq_len(x)	
+SETLOOPVAL.OP	14		TRUE	0	?	?									Purpose currently unknown.			Help needed: do not currently know what this bytecode is for or how to generate it from R code compilation.
+SETTAG.OP	31		TRUE	1	1	1	name				Name to set for most recent argument for a function call				Set the name of an argument to a function	"  GETBUILTIN max
+  PUSHCONSTARG NA
+  PUSHTRUEARG
+  SETTAG na.rm
+  CALLBUILTIN
+  RETURN"	c(a = 1)	
+SETTER_CALL.OP	98		TRUE	2	1	1	expridx	const			Stored expression	Unknown			Assignment via a `<-` method		names(x) <- 'hello'	
+SETVAR.OP	22		TRUE	1	1	1	name				Name of variable				Set the value of a variable	"LDCONST 1
+SETVAR y
+GETVAR y
+RETURN"	x <- y	
+SETVAR2.OP	95		TRUE	1	1	1	name				Name of variable				Use superassignment to set the value of a variable		x <<- y	
+SQRT.OP	49		TRUE	1	1	1	expridx				Stored expression				Square root 	"LDCONST 2
+SQRT
+RETURN"	sqrt(x)	
+STARTASSIGN.OP	61		TRUE	1	0	0	name				Name of variable into which value is being assigned				Start an assignment operation. 		a[1] <- 2	This instruction be paired with closing `ENDASSIGN` instruction.
+STARTASSIGN2.OP	96		FALSE	1	0	0	name				Name of variable into which value is being assigned				Start an assignment operation. 			"This instruction be paired with closing `ENDASSIGN2` instruction.
+
+Help needed: R code example which uses this instruction"
+STARTC.OP	67	TRUE	FALSE	2	NA	NA	expridx	label			Stored expression	Deprecated			Deprecated instruction			"This is a vestigal instruction that used to be paired with an ending `DFLTC` to peform the equivalent of `c(...)`.
+
+Now that `c()` is a builtin function, use `GETBUILTIN` and `CALLBUILTIN` instead.
+
+See also R source `main/eval.c` where comments indicate this OP is no longer used."
+STARTFOR.OP	11		TRUE	3	0	0	expridx	name	label		Stored expression	Name of loop variable	Location of matching `STEPFOR` instruction		Initiate a `for` loop		for(i in 1:3) {print(i)}	See also [STEPFOR  Section -@sec-STEPFOR] and [ENDFOR Section -@sec-ENDFOR].
+STARTLOOPCNTXT.OP	7		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start loop context		"repeat {
+  eval(""hello"")
+  break
+}"	"When complex things happen inside a `repeat`, `while()` or `for()` loop, it can no longer use simple `BRIFNOT` and `GOTO`.   And `eval()` inside a loop is one such occasion. 
+
+See also `ENDLOOPCNTXT` ([Section -@sec-ENDLOOPCNTXT])"
+STARTSUBASSIGN_N.OP	105		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start an assignment operation into a vector. 		a[1] <- 2	This instruction must be paired with a closing `VECSUBASSIGN` instruction.
+STARTSUBASSIGN.OP	65		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			An assignment operation into vector via an empty index		a[] <- 1	Help needed: Details of when this is used
+STARTSUBASSIGN2_N.OP	111		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start an assignment operation into a vector. 		m[[1,2,3]] <- 1	This instruction must be paired with a closing `SUBASSIGN2_N` instruction.
+STARTSUBASSIGN2.OP	71		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start an assignment operation		m[[,,]] <- 1	
+STARTSUBSET_N.OP	104		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start vector subset		a[1]	x[y] - label points to after matching VECSUBSET
+STARTSUBSET.OP	63		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start vector subset with `[]`		a[]	Help needed: R code example which uses this instruction
+STARTSUBSET2_N.OP	110		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Start vector subset with `[[]]`		a[[1]]	x[[y]] - label points to after matching VECSUBSET
+STARTSUBSET2.OP	69		TRUE	2	0	0	expridx	label			Stored expression	Location of matching `END*` instruction			Array subset		m[[,,]]	"This appears to be a vector subset instruction.
+
+Help needed: R code example which uses this instruction"
+STEPFOR.OP	12		TRUE	1	0	0	label				Location of matching `STARTFOR`				Advance to the next element in a `for` loop		for(i in 1:3) {print(i)}	See also [ENDFOR  Section -@sec-ENDFOR] and [STARTFOR Section -@sec-STARTFOR].
+SUB.OP	45		TRUE	1	2	1	expridx				Stored expression				Subtraction	"LDCONST 1
+LDCONST 2
+SUB
+RETURN"	x - y	
+SUBASSIGN_N.OP	114		FALSE	2	?	?	expridx	label			Stored expression	Location of matching `END*` instruction			Assignment into a subset of an object		m[1,2,3] <- 1	
+SUBASSIGN2_N.OP	115		FALSE	2	?	?	expridx	label			Stored expression	Location of matching `END*` instruction			Assignment into a subset of an object		m[[1, 2, 3]] <- 1	
+SUBSET_N.OP	112		FALSE	2	?	?	expridx	label			Stored expression	Location of matching `END*` instruction			Subset of an object		m[1,2,3]	
+SUBSET2_N.OP	113		FALSE	2	?	?	expridx	label			Stored expression	Location of matching `END*` instruction			Subset of an object		m[[1,2,3]]	
+SWAP.OP	100		TRUE	0	2	2									Swap the top two items on the stack	"LDCONST ""apple""
+LDCONST ""banana""
+SWAP
+RETURN"		
+SWITCH.OP	102		TRUE	4	1	1	expridx	char_vec	labels	labels	Stored expression	A character vector of labels for the choices. This may be NULL	A vector of locations matching the character vector. This may be NULL	A vector of labels  matching the locations to jump to if numeric argument is given as switching value	Equivalent to `switch()` statement		switch(x, 10, 20)	"The switch instruction is quite convoluted due to the way the `switch()` statement in R handles both numeric and character arguments.
+
+For the SWITCH instruction, four arguments are needed:
+
+1. *expridx*
+2. A character vector of labels for the choices. This may be `NULL`
+3. A vector of labels matching the character vector. This may be `NULL`
+4. A vector of labels matching the locations to jump to if numeric argument is given as first argument to `switch()`
+
+### Note
+
+There is not yet support for compiling this op in the `{asmr}` package."
+UMINUS.OP	42		TRUE	1	1	1	expridx				Stored expression				Unary minus	"LDCONST 1
+UMINUS
+RETURN"	-x + 1	
+UPLUS.OP	43		TRUE	1	1	1	expridx				Stored expression				Unary plus	"LDCONST 1
+UPLUS
+RETURN"	+x + 1	
+VECSUBASSIGN.OP	86		TRUE	1	1	0	expridx				Stored expression				End an assignment operation into the subset of a vector		a[1] <- 2	Assignment must have been started with `STARTSUBASSIGN_N` instruction.
+VECSUBASSIGN2.OP	108		TRUE	1	1	0	expridx				Stored expression				End an assignment operation into the subset of a vector		a[[1]] <- 2	Assignment must have been started with `STARTSUBASSIGN2_N` instruction.
+VECSUBSET.OP	84		TRUE	1	1	0	expridx				Stored expression				Vector subset with `[]`		a[1]	This instruction marks the end of a set of instructions which start with `STARTSUBSET_N`
+VECSUBSET2.OP	106		TRUE	1	1	0	expridx				Stored expression				Vector subset with `[[]]`		a[[1]]	This instruction marks the end of a set of instructions which start with `STARTSUBSET2_N`
+VISIBLE.OP	94		TRUE	0	1	1									Make an `invisible` object `visible` again.	"LDCONST 1
+INVISIBLE
+VISIBLE
+RETURN"		There is no direct analogue of this op in R.
