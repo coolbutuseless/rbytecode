@@ -16,6 +16,7 @@ book:
     - 08-assembly-details.qmd
     - 12-bytecode-assembly-syntax.qmd
     - 15-stored-expressions.qmd
+    - 17-exploration.qmd
     - 20-op-reference-auto.qmd
     - 98-summary.qmd
     - 99-references.qmd

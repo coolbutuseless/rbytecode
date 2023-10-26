@@ -1,0 +1,155 @@
+
+```{r include=FALSE}
+library(rbytecode)
+```
+
+# Exploration {#sec-exploration}
+
+This chapter explores some of the inner workings of R and the R bytecode compiler.
+
+## Compiler Optimization: Constant folding {#sec-constant-folding}
+
+The internal R bytecode compiler includes *constant folding* as one of 
+its optimization mechanisms.
+
+[Constant folding](https://en.wikipedia.org/wiki/Constant_folding) is the 
+process of evaluating constant expressions at compile time rather than computing
+them at execution time.
+
+Constants include simple literals (e.g. `2`), but also include expressions whose
+value is known at compile time.
+
+There are four types of objects that are **not** treated as constants:
+
+1. function calls of type *language*
+2. variable references of type *symbol*
+3. promises
+4. bytecode objects
+
+If an expression does not contain any of these, then it is a candidate for
+evaluation during the bytecode compilation process i.e. *constant folding*.
+
+According to Tierney [@tierney23] *constant folding* is applied during code 
+generation, and it not part of a separate optimization phase.
+
+Note: `{rbytecode}` bypasses R's compilation mechanism and does not include
+any optimization steps i.e. bytecode assembly is converted to a bytecode object
+exactly as specified.
+
+### Simple demonstration of *constant folding* in action
+
+As an example of constant folding, compare the disassembly of the following
+two expressions `1 + x` and `1 + 2`
+
+```{r}
+disq({
+  1 + x
+}) |> as.character()
+```
+
+In `x + 1`, the variable `x` is not a constant (i.e. it is a variable
+reference of type *symbol* - which is the second in the list of four non-constant
+elements noted above).  Since the expression contains a non-constant, it is left
+as-is and evaluated at runtime i.e. the value of `x` is always fetched in order to 
+calculate the result.
+
+```{r}
+disq({
+  1 + 2
+}) |> as.character()
+```
+
+In `1 + 2`, both arguments are constants and the compiler evaluates this
+expression at compile time.  When evaluating this bytecode, it simply fetches
+the pre-computed value of `3` and returns it.
+
+Note that the function `+` does *not* count as a function call of type *language*
+in this example.  Because `+` is a *primitive* operation it gets a free-pass and
+its calculation is assumed to be deterministic.
+
+
+### More complex example with constant folding
+
+Constant folding works with numeric vectors and nested operations.
+
+In the following, the actual compiled bytecode simply loads the pre-calculated
+answer and returns it.
+
+```{r}
+disq(
+  1:3 + 2^2 * (4 + (8 - 2))
+) |> as.character()
+```
+
+
+
+### Constant Folding and the Commutative Property
+
+In the following examples it is evident that in R's compiler, the optimization step related
+to constant folding does not make use of the [commutative property](https://en.wikipedia.org/wiki/Commutative_property).
+
+`2 * 3 * x` is correctly optimized to `6 * x`.
+
+But in `2 * x * 3`, no simplification is done and the disassembled bytecode indicates that 
+`2 * x` is evaluated first, and then that result is multiplied by 3.
+
+```{r}
+disq(
+  2 * 3 * x
+) |> as.character()
+```
+
+
+```{r}
+disq(
+  2 * x * 3
+) |> as.character()
+```
+
+
+### Constant folding and `MATH1` operations
+
+It is interesting to note that even though the `MATH1` functions ([Section -@sec-math1functions]) 
+are deterministic, they are not included in *constant folding* optimization.
+
+In the following example, `sin(1)` always evaluates to the same value, yet
+the bytecode indicates that this value is calculated every time during execution
+by calling the `sin()` function with an argument of `1`.
+
+```{r}
+disq(
+  sin(1)
+) |> as.character()
+```
+
+
+
+### Corner case: redefined primitive functions
+
+What happens if `+` is not a primitive operation?  This would be the case if
+its definition had been changed for some reason.
+
+```{r}
+`+` <- function(x, y) {x + y}
+
+disq(
+  1 + 2
+) |> as.character()
+```
+
+Now that the compiler detects this function is no longer the primitive it 
+usually is, it can no longer determine that the expression always
+evaluates to a constant.   No constant folding is performed, and the bytecode 
+will call the function each time it is evaluated.
+
+### Future ideas
+
+It is possible that future optimization steps in the R compiler could address:
+
+1. Consider `MATH1` functions with constant arguments as producing a constant
+    result which can be optimized with *constant folding*.
+2. Apply the commutative property to find more opportunities for *constant folding*.
+
+
+
+
