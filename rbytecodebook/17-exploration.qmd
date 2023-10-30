@@ -151,5 +151,170 @@ It is possible that future optimization steps in the R compiler could address:
 2. Apply the commutative property to find more opportunities for *constant folding*.
 
 
+## Squaring a number
+
+There are 3 common ways to square a number in R - illustrated in the following code.
+
+```{r}
+x <- 3
+x^2
+x**2
+x * x
+```
+
+
+### `x^2` and `x**2` are exactly the same
+
+Disassembling `x^2` and `x**2` (below) shows that they compile to the exact 
+same bytecode.
+
+```{r}
+disq(
+  x^2
+) |> as.character()
+```
+
+
+```{r}
+disq(
+  x**2
+) |> as.character()
+```
+
+### What is `x * x` doing?
+
+As shown below, `x * x` loads the variable twice and calls the `MUL` operation.
+
+```{r}
+disq(
+  x * x
+) |> as.character()
+```
+
+
+### Why is `x * x` faster than `x ^ 2`?
+
+`x ^ 2` uses the `EXPT` operation which is far more expensive than `MUL`.
+
+The `MUL` operator is potentially a single CPU instruction, while the `EXPT`
+operation probably calls a math library function that is **huge** by comparison
+(e.g. see [netlib's libm pow function](https://www.netlib.org/fdlibm/e_pow.c))
+
+```{r}
+x <- runif(10000)
+res <- bench::mark(x^2, x*x, relative = TRUE) 
+knitr::kable(res[,c(1, 4)], caption = "Relative speed of MUL and EXPT (higher is better)")
+```
+
+
+### Calculating the square faster than `x * x`
+
+Calculating the square of a variable faster than `x * x` at first seems 
+improbable.  How can you multiply faster than multiplying??
+
+The trick used below is to not fetch the same variable twice.  In standard
+R code `x * x` produces *two* calls to `GETVAR`.  A `GETVAR` call involves two steps:
+
+1. an indirect lookup (by index) in the `CONST` list to get the variable name
+2. fetching the variable name from the current environment.
+
+Since we already loaded the variable on the stack with the first `GETVAR` statement,  we can use the `DUP` op ([Section -@sec-DUP]) to duplicate this value
+that is now on the top of the stack, and push this dupe onto the stack as well.
+
+The `DUP` is cheaper than a second `GETVAR`, and thus we get the fastest way 
+to square a variable in R - even if it's only be a few percent.
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Bytecode for "x * x"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+b1 <- asm(r"(
+GETVAR x
+GETVAR x
+MUL
+RETURN
+)")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Squaring a number using DUP
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+b2 <- asm(r"(
+GETVAR x
+DUP
+MUL
+RETURN
+)")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Benchmarking (calculating relative speeds)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+x <- runif(5)
+res <- bench::mark(eval(b1), eval(b2), relative = TRUE)
+knitr::kable(res[,c(1, 4)], caption = "Relative speed of using `DUP` over multiple `GETVAR` operations (higher is better)")
+```
+
+
+### Higher powers: Third power of a variable
+
+```{r}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# x ^ 3
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+b0 <- asm(r"(
+GETVAR x
+LDCONST 3
+EXPT
+RETURN
+)")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Bytecode for "x * x * x"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+b1 <- asm(r"(
+GETVAR x
+GETVAR x
+MUL
+GETVAR x
+MUL
+RETURN
+)")
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Cubing a number using DUP
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+b2 <- asm(r"(
+GETVAR x
+DUP
+DUP
+MUL
+MUL
+RETURN
+)")
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Benchmarking (calculating relative speeds)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+x <- runif(10)
+res <- bench::mark(eval(b0), eval(b1), eval(b2), relative = TRUE)
+knitr::kable(res[,c(1, 4)], caption = "Relative speed of using `DUP` over multiple `GETVAR` operations (higher is better)")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
