@@ -4,7 +4,7 @@
 \alias{asm}
 \title{Compile bytecode assembly into an R bytecode object}
 \usage{
-asm(code, expr_default = quote(stop("{rbytecode}")))
+asm(code, expr_default = quote(stop("[rbytecode]")))
 }
 \arguments{
 \item{code}{R bytecode assembly code as a single string}
@@ -13,7 +13,7 @@ asm(code, expr_default = quote(stop("{rbytecode}")))
 In general this should be a quoted `call` object, and if you 
 are running a standard modern version of R, then it will 
 almost never get evaluated/called.
-Default: quote(stop("{rbytecode}")).}
+Default: quote(stop("[rbytecode]")).}
 }
 \value{
 bytecode object

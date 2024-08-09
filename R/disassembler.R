@@ -176,7 +176,7 @@ gen_label <- function(env) {
 dis <- function(x, incl_expr = FALSE, depth = 0L, env = NULL) {
   
   if (is.null(env)) {
-    # NULL environment should only happen at depth=-
+    # NULL environment should only happen at depth = 0
     stopifnot(depth == 0) 
     env <- as.environment(list(lcount = 0L))
   }
@@ -215,6 +215,7 @@ dis <- function(x, incl_expr = FALSE, depth = 0L, env = NULL) {
   
   # Keep track of label usage
   labels <- list()
+  label_depth <- list()
   
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # Process each instruction
@@ -337,6 +338,7 @@ dis <- function(x, incl_expr = FALSE, depth = 0L, env = NULL) {
             } else {
               this_label <- gen_label(env)
               labels[[this_label]] <- label_pc
+              label_depth[[this_label]] <- depth
             }
             args_out <- c(args_out, this_label)
           },
@@ -388,6 +390,7 @@ dis <- function(x, incl_expr = FALSE, depth = 0L, env = NULL) {
                 } else {
                   this_label <- gen_label(env)
                   labels[[this_label]] <- label_pc
+                  label_depth[[this_label]] <- depth
                 }
                 this_labels <- c(this_labels, this_label)
               }              
@@ -427,9 +430,10 @@ dis <- function(x, incl_expr = FALSE, depth = 0L, env = NULL) {
     # Extract the PC and name for this label
     pc      <- labels[[i]]
     label   <- names(labels)[i]
+    depth   <- label_depth[[i]]
     
     # Work out which row in the bytecode data.frame has this PC
-    row_idx <- which(df$pc == pc)
+    row_idx <- which(df$pc == pc & df$depth == depth)
     
     # Sanity check. There should be a PC which exactly matches the label
     # reference. If there isn't, then there's something deeply wrong.

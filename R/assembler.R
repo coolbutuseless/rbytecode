@@ -291,7 +291,7 @@ is_label <- function(x) {
 #'        In general this should be a quoted `call` object, and if you 
 #'        are running a standard modern version of R, then it will 
 #'        almost never get evaluated/called.
-#'        Default: quote(stop("{rbytecode}")).
+#'        Default: quote(stop("[rbytecode]")).
 #' 
 #' @examples
 #' \dontrun{
@@ -308,7 +308,7 @@ is_label <- function(x) {
 #' @return bytecode object
 #' @export
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-compile_bcdf <- function(bcdf, expr_default = quote(stop("{rbytecode}"))) {
+compile_bcdf <- function(bcdf, expr_default = quote(stop("[rbytecode]"))) {
   
   stopifnot(is.data.frame(bcdf), nrow(bcdf) > 0)
   
@@ -613,7 +613,7 @@ compile_bcdf <- function(bcdf, expr_default = quote(stop("{rbytecode}"))) {
 #' @return bytecode object
 #' @export
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-asm <- function(code, expr_default = quote(stop("{rbytecode}"))) {
+asm <- function(code, expr_default = quote(stop("[rbytecode]"))) {
  bcdf <- parse_code(code)
  compile_bcdf(bcdf, expr_default = expr_default)
 }

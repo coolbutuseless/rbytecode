@@ -4,7 +4,7 @@
 \alias{compile_bcdf}
 \title{Compile a bytecode data.frame to an executable R bytecode object}
 \usage{
-compile_bcdf(bcdf, expr_default = quote(stop("{rbytecode}")))
+compile_bcdf(bcdf, expr_default = quote(stop("[rbytecode]")))
 }
 \arguments{
 \item{bcdf}{bytecode data.frame}
@@ -13,7 +13,7 @@ compile_bcdf(bcdf, expr_default = quote(stop("{rbytecode}")))
 In general this should be a quoted `call` object, and if you 
 are running a standard modern version of R, then it will 
 almost never get evaluated/called.
-Default: quote(stop("{rbytecode}")).}
+Default: quote(stop("[rbytecode]")).}
 }
 \value{
 bytecode object
